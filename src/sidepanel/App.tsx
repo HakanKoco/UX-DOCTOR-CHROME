@@ -8,6 +8,12 @@ import { PRINCIPLE_IDS, PRINCIPLE_LABELS } from '@/shared/rubric'
 import { buildReport, slugForFile, timestampForFile } from '@/shared/reportBuilder'
 import { detectSensitivePage } from '@/shared/sensitivity'
 import { requestSiteAccess } from '@/shared/sitePermissions'
+import {
+  buildConsistencyExport,
+  buildHallucinationReview,
+  type ConsistencyExport,
+  type ConsistencyFailure,
+} from '@/shared/validationExports'
 import ConfirmSendDialog from './ConfirmSendDialog'
 import FindingList, { type FindingGroup } from './FindingList'
 import LlmDetails from './LlmDetails'
@@ -15,6 +21,7 @@ import ManualReviewList from './ManualReviewList'
 import PrivacyPanel from './PrivacyPanel'
 import ScoreSummary from './ScoreSummary'
 import SettingsSummary, { useSettings } from './SettingsSummary'
+import ValidationTools from './ValidationTools'
 import { downloadJson } from './download'
 import { buildLlmResult, callLlm } from './llmClient'
 import { captureFindingScreenshot } from './screenshot'
@@ -23,6 +30,8 @@ import { TabAccessError, callContent, getActiveTab } from './tabBridge'
 interface PendingSend {
   body: LlmRequestBody
   inventory: Inventory
+  /** 1: tek analiz; >1: tutarlılık testi (aynı gövde N kez). */
+  runs: number
 }
 
 type UiError = { text: string; canRequestPermission: boolean } | null
@@ -44,6 +53,10 @@ export default function App() {
   const [llm, setLlm] = useState<LlmResult | null>(null)
   /** LLM'e gerçekten gönderilen gövde (rapora aynen yazılır). */
   const [sentBody, setSentBody] = useState<LlmRequestBody | null>(null)
+  /** LLM analizinde kullanılan yerel envanter (halüsinasyon elle doğrulama listesi için). */
+  const [llmInventory, setLlmInventory] = useState<Inventory | null>(null)
+  const [consistency, setConsistency] = useState<ConsistencyExport | null>(null)
+  const [progress, setProgress] = useState<{ done: number; total: number; failed: number } | null>(null)
   const [pending, setPending] = useState<PendingSend | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<UiError>(null)
@@ -53,6 +66,9 @@ export default function App() {
     setError(null)
     setLlm(null)
     setSentBody(null)
+    setLlmInventory(null)
+    setConsistency(null)
+    setProgress(null)
     try {
       const tab = await getActiveTab()
       setTabId(tab.id)
@@ -68,13 +84,13 @@ export default function App() {
     }
   }
 
-  async function prepareLlm() {
+  async function prepareLlm(runs = 1) {
     if (tabId === null || !settings) return
     setError(null)
     setBusy('Öğe envanteri hazırlanıyor…')
     try {
       const inventory = await callContent(tabId, 'buildInventory')
-      setPending({ body: buildRequestBody(settings.model, inventory), inventory })
+      setPending({ body: buildRequestBody(settings.model, inventory), inventory, runs })
     } catch (e) {
       setError(toUiError(e))
     } finally {
@@ -84,18 +100,61 @@ export default function App() {
 
   async function sendLlm() {
     if (!pending) return
-    const { body, inventory } = pending
+    const { body, inventory, runs } = pending
     setPending(null)
+    if (runs > 1) return runConsistency(body, inventory, runs)
     setBusy('Claude API yanıtı bekleniyor (bir dakikayı bulabilir)…')
     try {
       const call = await callLlm(body)
       setLlm(await buildLlmResult(call, body, inventory, tabId))
       setSentBody(body)
+      setLlmInventory(inventory)
     } catch (e) {
       setError(toUiError(e))
     } finally {
       setBusy(null)
     }
+  }
+
+  /** Tutarlılık testi: aynı gövde sırayla N kez gönderilir (kullanıcı tek onay ekranında N'yi görerek onayladı). */
+  async function runConsistency(body: LlmRequestBody, inventory: Inventory, runs: number) {
+    if (!page) return
+    setConsistency(null)
+    const results: { runIndex: number; result: LlmResult }[] = []
+    const failures: ConsistencyFailure[] = []
+    setProgress({ done: 0, total: runs, failed: 0 })
+    for (let i = 1; i <= runs; i++) {
+      setBusy(`Tutarlılık testi: ${i}/${runs}. çalıştırma bekleniyor…`)
+      try {
+        const call = await callLlm(body)
+        results.push({ runIndex: i, result: await buildLlmResult(call, body, inventory, tabId) })
+      } catch (e) {
+        failures.push({ runIndex: i, timestamp: new Date().toISOString(), error: e instanceof Error ? e.message : String(e) })
+      }
+      setProgress({ done: i, total: runs, failed: failures.length })
+    }
+    setBusy(null)
+    setConsistency(buildConsistencyExport({ page, body, inventory, requestedRuns: runs, results, failures }))
+    // İlk başarılı çalıştırma, rapor görünümü için LLM sonucu olarak da gösterilir (rapora o yazılır).
+    if (results[0]) {
+      setLlm(results[0].result)
+      setSentBody(body)
+      setLlmInventory(inventory)
+    }
+    if (failures.length > 0 && results.length === 0) setError({ text: failures[0].error, canRequestPermission: false })
+  }
+
+  function exportConsistency() {
+    if (!consistency || !page) return
+    downloadJson(`ux-doktor-tutarlilik-${slugForFile(page.host)}-${timestampForFile()}.json`, consistency)
+  }
+
+  function exportHallucination() {
+    if (!llm || !page) return
+    downloadJson(
+      `ux-doktor-halusinasyon-${slugForFile(page.host)}-${timestampForFile()}.json`,
+      buildHallucinationReview({ page, llm, inventory: llmInventory }),
+    )
   }
 
   async function highlightFindings(findings: Finding[], scroll: boolean) {
@@ -242,7 +301,7 @@ export default function App() {
         <section aria-labelledby="llm-title">
           <h2 id="llm-title">Norman ilkeleri (LLM)</h2>
           <div className="row">
-            <button type="button" onClick={prepareLlm} disabled={busy !== null || llmDisabledReason !== null}>
+            <button type="button" onClick={() => prepareLlm(1)} disabled={busy !== null || llmDisabledReason !== null}>
               LLM analizi için gönderimi hazırla
             </button>
           </div>
@@ -256,11 +315,24 @@ export default function App() {
         </section>
       )}
 
+      {det && (
+        <ValidationTools
+          disabledReason={llmDisabledReason}
+          busy={busy !== null}
+          progress={progress}
+          consistency={consistency}
+          canExportHallucination={llm !== null}
+          onStartConsistency={(runs) => prepareLlm(runs)}
+          onExportConsistency={exportConsistency}
+          onExportHallucination={exportHallucination}
+        />
+      )}
+
       {pending && (
         <ConfirmSendDialog
           requestBody={pending.body}
           model={pending.body.model}
-          runs={1}
+          runs={pending.runs}
           extraHeaders={requiredBetas(pending.body).length > 0 ? { 'anthropic-beta': requiredBetas(pending.body).join(',') } : {}}
           readableUserPayload={buildUserPayload(pending.inventory)}
           onSend={sendLlm}
