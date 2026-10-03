@@ -33,7 +33,7 @@ Gereksinim takibi: docs/GEREKSINIMLER.md (her fazda güncellenir).
 - Uzak kod yok: CDN script, `eval`, uzaktan import kullanılmaz. axe-core paketten gömülür.
 - ÖLÇÜM SONUCU UYDURMA. Tutarlılık sapmaları, halüsinasyon oranları, manuel test tabloları, `reports/` altındaki JSON'lar, README'deki doğrulama sayıları ve yansıtma notu YALNIZCA öğrencinin gerçek çalıştırmalarından gelir. Sen bu verileri üreten araçları ve boş şablonları yazarsın; değer alanlarına `TODO: gerçek ölçüm` yazarsın.
 - `docs/ai-gunlugu.md` ve yansıtma notunu öğrenci yazar. Bu dosyalara içerik ekleme.
-- Push'u Claude yapar (`origin` = https://github.com/HakanKoco/UX-DOCTOR-CHROME.git, dal `master`). Commit'ten sonra push et. Push öncesi `npm run build`, tip kontrolü ve testler geçmeli; commit geçmişinde API anahtarı olmadığı taranmalı. Force push yapma.
+- Push'u öğrenci yapar (`origin` = https://github.com/HakanKoco/UX-DOCTOR-CHROME.git, dal `master`). Claude yalnızca commit atar, push etmez. Commit öncesi `npm run build`, tip kontrolü, `npm test` ve `npm run test:browser` geçmeli; commit geçmişinde API anahtarı olmadığı taranmalı. Force push yapılmaz.
 
 ## Gizlilik katmanı (LLM katmanından ÖNCE hazır olmalı)
 - Hassas sayfa tespiti şu sinyallerden yapılır:

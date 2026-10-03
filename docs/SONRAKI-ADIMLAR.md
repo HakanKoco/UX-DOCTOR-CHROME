@@ -23,7 +23,7 @@ deterministik %20, LLM %20, skorlama %15, README/demo/rapor %10, yansıtma %10. 
 | 8 | README doğrulama bölümünü doldurma | 30 dk | `TODO` kalmamış README |
 | 9 | Demo videosu | 1-2 saat | 3-5 dk video |
 | 10 | Yansıtma notu ve AI günlüğü | 1 saat | yarım sayfa not |
-| 11 | Son kontrol, commit, push (push: Claude) | 20 dk | GitHub repo güncel |
+| 11 | Son kontrol, commit, push (push: sen) | 20 dk | GitHub repo güncel |
 
 ---
 
@@ -303,6 +303,11 @@ git add README.md docs/
 git commit -m "docs: doğrulama sonuçlarını ve test şablonlarını doldur"
 ```
 
-Repo GitHub'a bağlı: https://github.com/HakanKoco/UX-DOCTOR-CHROME (`origin`, dal `master`). **Push'u Claude yapar:** dosyaları ekledikten sonra Claude'a "commit'le ve push et" demen yeterli. Claude push öncesi derleme, tip kontrolü, testler ve anahtar taramasını çalıştırır.
+Repo GitHub'a bağlı: https://github.com/HakanKoco/UX-DOCTOR-CHROME (`origin`, dal `master`). **Push'u sen yaparsın.** Claude yalnızca commit atar. Push'tan önce yukarıdaki kontrolleri çalıştır, sonra:
+
+```bash
+git log --oneline origin/master..master   # gönderilecek commit'ler
+git push origin master                     # force push yapma
+```
 
 Push'tan sonra GitHub'da README'nin (Mermaid şeması dahil) düzgün göründüğünü kontrol et.
