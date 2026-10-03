@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { sendToBackground } from '@/shared/messages'
+import { interpretVerifyResponse, sendToBackground } from '@/shared/messages'
 import {
   CLAUDE_MODEL_OPTIONS,
   GEMINI_MODEL_OPTIONS,
@@ -154,7 +154,7 @@ export default function App() {
     setBusy(true)
     setStatus({ kind: 'info', text: 'Doğrulanıyor…' })
     try {
-      const result = await sendToBackground({ type: 'verify-key', provider })
+      const result = interpretVerifyResponse(provider, await sendToBackground({ type: 'verify-key', provider }))
       setStatus({ kind: result.ok ? 'ok' : 'error', text: result.message })
     } finally {
       setBusy(false)

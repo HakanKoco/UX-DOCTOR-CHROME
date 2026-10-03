@@ -91,11 +91,15 @@ export function parseGeminiResponse(data: unknown, requestedModel: string): Gemi
  * anahtar maskelenir — anahtar hiçbir hata mesajına sızmaz.
  */
 export function describeGeminiHttpError(status: number, body: unknown, apiKey?: string): string {
-  const err = (body as { error?: { message?: unknown; status?: unknown } } | null)?.error
+  const err = (body as { error?: { message?: unknown; status?: unknown; details?: unknown } } | null)?.error
   let detail = typeof err?.message === 'string' ? err.message : ''
   if (apiKey) detail = detail.split(apiKey).join('[ANAHTAR]')
   const code = typeof err?.status === 'string' ? ` ${err.status}` : ''
   const suffix = detail ? `: ${detail}` : ''
+  // Geçersiz anahtar 401/403 değil, 400 INVALID_ARGUMENT + ErrorInfo.reason "API_KEY_INVALID" olarak döner
+  // (models.get uç noktasında sahte anahtarla gözlendi).
+  const reasons = Array.isArray(err?.details) ? err.details.map((d) => (d as { reason?: unknown })?.reason) : []
+  if (reasons.includes('API_KEY_INVALID')) return `Gemini API anahtarı geçersiz (${status} API_KEY_INVALID).`
   switch (status) {
     case 400:
       return `İstek reddedildi (400${code})${suffix}`

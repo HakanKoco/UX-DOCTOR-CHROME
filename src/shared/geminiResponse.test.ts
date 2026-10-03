@@ -66,6 +66,26 @@ describe('describeGeminiHttpError', () => {
     expect(msg).toContain('[ANAHTAR]')
   })
 
+  it('geçersiz anahtar (400 + API_KEY_INVALID) anahtar hatası olarak çevrilir', () => {
+    // Gövde biçimi, models.get'e sahte anahtarla yapılan istekte gözlenen yanıttan alınmıştır.
+    const body = {
+      error: {
+        code: 400,
+        message: 'API key not valid. Please pass a valid API key.',
+        status: 'INVALID_ARGUMENT',
+        details: [
+          { '@type': 'type.googleapis.com/google.rpc.ErrorInfo', reason: 'API_KEY_INVALID', domain: 'googleapis.com' },
+        ],
+      },
+    }
+    expect(describeGeminiHttpError(400, body)).toBe('Gemini API anahtarı geçersiz (400 API_KEY_INVALID).')
+  })
+
+  it('anahtarsız istek (403 PERMISSION_DENIED) erişim hatası olarak çevrilir', () => {
+    const body = { error: { code: 403, message: "Method doesn't allow unregistered callers", status: 'PERMISSION_DENIED' } }
+    expect(describeGeminiHttpError(403, body)).toContain('403 PERMISSION_DENIED')
+  })
+
   it('gövde JSON değilse de anlamlı mesaj döner', () => {
     expect(describeGeminiHttpError(503, null)).toContain('503')
     expect(describeGeminiHttpError(404, null)).toContain('Model bulunamadı')
