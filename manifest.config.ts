@@ -30,6 +30,16 @@ export default defineManifest({
   permissions: [
     'sidePanel',
     'storage',
+    // Kullanıcının simgeye tıkladığı sekmeye geçici erişim; sayfadan ayrılınca düşer.
+    'activeTab',
+    // Analiz betiğini yalnızca kullanıcı analiz başlattığında enjekte etmek için.
+    'scripting',
+  ],
+  // Kurulumda istenmez. Yalnızca activeTab yetmediğinde kullanıcı yan paneldeki düğmeyle açıkça verir,
+  // ayarlar sayfasından geri alabilir. Değer src/sidepanel/tabBridge.ts içindeki OPTIONAL_ORIGINS ile aynı.
+  optional_host_permissions: [
+    'http://*/*',
+    'https://*/*',
   ],
   // Service worker'ın Claude API isteklerinin CORS nedeniyle engellenmemesi için yalnızca bu alan adı.
   host_permissions: [

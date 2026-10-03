@@ -13,22 +13,22 @@ Durum değerleri:
 | ID | Gereksinim | Ödev bölümü | Faz | Dosya/klasör | Durum |
 |---|---|---|---|---|---|
 | R01 | Chrome Extension, Manifest V3 | 2 | 0 | manifest.config.ts | Tamamlandı |
-| R02 | Deterministik katman: axe-core ile WCAG 2.2 AA | 2.a | 2 | src/content | Bekliyor |
-| R03 | Kontrast oranı kontrolü | 2.a | 2 | src/content | Bekliyor |
-| R04 | Eksik alt metin kontrolü | 2.a | 2 | src/content | Bekliyor |
-| R05 | Etiketsiz form alanı kontrolü | 2.a | 2 | src/content | Bekliyor |
-| R06 | 24x24 px altı dokunma hedefi kontrolü | 2.a | 2 | src/content | Bekliyor |
-| R07 | Sayfa dili tanımı kontrolü | 2.a | 2 | src/content | Bekliyor |
+| R02 | Deterministik katman: axe-core ile WCAG 2.2 AA | 2.a | 2 | src/content | Tamamlandı |
+| R03 | Kontrast oranı kontrolü | 2.a | 2 | src/content | Tamamlandı (color-contrast) |
+| R04 | Eksik alt metin kontrolü | 2.a | 2 | src/content | Tamamlandı (image-alt, input-image-alt, role-img-alt, svg-img-alt, area-alt, object-alt) |
+| R05 | Etiketsiz form alanı kontrolü | 2.a | 2 | src/content | Tamamlandı (label, select-name, aria-input-field-name, aria-toggle-field-name) |
+| R06 | 24x24 px altı dokunma hedefi kontrolü | 2.a | 2 | src/content | Tamamlandı (target-size, açıkça etkinleştirildi) |
+| R07 | Sayfa dili tanımı kontrolü | 2.a | 2 | src/content | Tamamlandı (html-has-lang, html-lang-valid, valid-lang, html-xml-lang-mismatch) |
 | R08 | Yorumsal katman: LLM ile Norman'ın 6 ilkesi (rubrik) | 2.b | 4 | src/background, src/shared | Bekliyor |
 | R09 | Her ilke/kategori için 0-100 alt skor | 2 (Skorlama) | 5 | src/scoring | Bekliyor |
 | R10 | Ağırlıklı toplam skor | 2 (Skorlama) | 5 | src/scoring | Bekliyor |
 | R11 | Skor formülü ve gerekçesi README'de | 2 (Skorlama), 6 | 7 | README.md | Bekliyor |
 | R12 | Deterministik ve LLM skorları ayrı gösterilir | 2 (Skorlama) | 5 | src/sidepanel | Bekliyor |
-| R13 | Bulguda ilgili DOM öğesi (CSS seçici) | 2 (Bulgu) | 2 / 4 | src/content, src/shared | Bekliyor |
-| R14 | Bulguda sayfada vurgulama veya ekran görüntüsü | 2 (Bulgu) | 2 / 5 | src/content | Bekliyor |
-| R15 | Bulguda ihlal edilen kural/ilke | 2 (Bulgu) | 2 / 4 | src/shared | Bekliyor |
-| R16 | Bulguda şiddet: Kritik / Yüksek / Orta / Düşük | 2 (Bulgu) | 2 / 4 | src/shared | Bekliyor |
-| R17 | Bulguda somut düzeltme önerisi | 2 (Bulgu) | 2 / 4 | src/shared | Bekliyor |
+| R13 | Bulguda ilgili DOM öğesi (CSS seçici) | 2 (Bulgu) | 2 / 4 | src/content, src/shared | Deterministik: tamamlandı; LLM: Faz 4 |
+| R14 | Bulguda sayfada vurgulama veya ekran görüntüsü | 2 (Bulgu) | 2 / 5 | src/content | Vurgulama: tamamlandı; ekran görüntüsü: Faz 5 |
+| R15 | Bulguda ihlal edilen kural/ilke | 2 (Bulgu) | 2 / 4 | src/shared | Deterministik: tamamlandı; LLM: Faz 4 |
+| R16 | Bulguda şiddet: Kritik / Yüksek / Orta / Düşük | 2 (Bulgu) | 2 / 4 | src/shared | Deterministik: tamamlandı (axe impact eşlemesi); LLM: Faz 4 |
+| R17 | Bulguda somut düzeltme önerisi | 2 (Bulgu) | 2 / 4 | src/shared | Deterministik: tamamlandı (kural başına Türkçe öneri); LLM: Faz 4 |
 | R18 | Rapor eklenti panelinde görüntülenir | 2 (Rapor) | 5 | src/sidepanel | Bekliyor |
 | R19 | Rapor JSON olarak dışa aktarılır | 2 (Rapor) | 5 | src/shared, src/sidepanel | Bekliyor |
 | R20 | En az 3 sitede test (sağlık, Türk e-ticaret, kamu; yalnızca herkese açık sayfalar) | 3 | — | reports/ | Öğrenci |
@@ -43,7 +43,7 @@ Durum değerleri:
 | R29 | Giriş yapılmış / kişisel / sağlık verili sayfada LLM gönderim kilidi ve açık onay | 5 | 3 | src/shared, src/sidepanel | Bekliyor |
 | R30 | Form değerleri, klavye vuruşları, kişisel veri toplanmaz; LLM'e giden içerik maskelenir | 5 | 3 / 4 | src/shared | Bekliyor |
 | R31 | API anahtarı koda gömülmez, repoya commit edilmez (ayarlar sayfasından girilir, chrome.storage.local) | 5 | 1 | src/options, src/shared/settings.ts | Tamamlandı (sürekli kural) |
-| R32 | Analiz edilen siteye otomatik form gönderimi / tıklama yok | 5 | 2 / 4 | src/content | Sürekli kural |
+| R32 | Analiz edilen siteye otomatik form gönderimi / tıklama yok | 5 | 2 / 4 | src/content | Sürekli kural (analiz betiği salt okunur) |
 | R33 | GitHub repo, anlamlı commit geçmişi (tek commit kabul edilmez) | 6 | Tümü | git | Sürekli kural (push: Öğrenci) |
 | R34 | README: kurulum adımları | 6 | 7 | README.md | Bekliyor |
 | R35 | README: mimari şema | 6 | 7 | README.md | Bekliyor |
@@ -64,9 +64,10 @@ Durum değerleri:
 |---|---|---|---|---|
 | `sidePanel` | 0 | Eklendi | Arayüz yan panelde; ikon tıklaması `setPanelBehavior` ile paneli açar | https://developer.chrome.com/docs/extensions/reference/api/sidePanel |
 | `storage` | 1 | Eklendi | API anahtarı ve model seçimi `chrome.storage.local` içinde | https://developer.chrome.com/docs/extensions/reference/api/storage |
-| `activeTab` | 2 | Bekliyor | Yalnızca kullanıcının ikona tıkladığı sekmeye geçici erişim; sayfadan ayrılınca düşer. Yan panelin ikonla açılmasının bu izni verip vermediği dokümanda yazmıyor; Faz 2'de elle test edilecek | https://developer.chrome.com/docs/extensions/develop/concepts/activeTab |
-| `scripting` | 2 | Bekliyor | axe-core ve envanter betiğini yalnızca analiz istendiğinde enjekte etmek (`executeScript`); `activeTab` ile birlikte gerekir | aynı kaynak |
+| `activeTab` | 2 | Eklendi | Yalnızca kullanıcının ikona tıkladığı sekmeye geçici erişim; sayfadan ayrılınca düşer. Yan panelin ikonla açılmasının bu izni verip vermediği resmi dokümanda yazmıyor; vermezse aşağıdaki isteğe bağlı izin devreye girer | https://developer.chrome.com/docs/extensions/develop/concepts/activeTab |
+| `scripting` | 2 | Eklendi | axe-core ve envanter betiğini yalnızca analiz istendiğinde enjekte etmek (`executeScript`); `activeTab` ile birlikte gerekir | aynı kaynak |
+| `optional_host_permissions: http://*/*, https://*/*` | 2 | Eklendi (kurulumda istenmez) | activeTab yetmezse kullanıcı yan paneldeki "Site erişim izni ver" düğmesiyle açıkça verir; ayarlar sayfasından geri alınabilir | https://developer.chrome.com/docs/extensions/reference/api/permissions |
 | `host_permissions: https://api.anthropic.com/*` | 1 | Eklendi | Service worker'ın Claude API isteklerinin CORS nedeniyle engellenmemesi için yalnızca API alan adı. SDK ayrıca `anthropic-dangerous-direct-browser-access: true` başlığını gönderir (`dangerouslyAllowBrowser`) | node_modules/@anthropic-ai/sdk/client.js; https://simonwillison.net/2024/Aug/23/anthropic-dangerous-direct-browser-access/ |
 | Ekran görüntüsü (opsiyonel) | 5 | Bekliyor | `tabs.captureVisibleTab` `activeTab` ile çalışır; ek izin gerekmez | https://developer.chrome.com/docs/extensions/reference/api/tabs#method-captureVisibleTab |
 
-Bilerek **kullanılmayan**: `content_scripts` (her sayfaya otomatik enjeksiyon yok), `host_permissions` (Faz 4 kararı hariç), `debugger`, `tabs`, `contentSettings`.
+Bilerek **kullanılmayan**: `content_scripts` (her sayfaya otomatik enjeksiyon yok), geniş `host_permissions`, `debugger`, `tabs`, `contentSettings`, `downloads` (dışa aktarma `<a download>` ile yapılır). Derleme sırasında CRXJS'in eklediği `web_accessible_resources` kaydı vite.config.ts içindeki eklentiyle silinir (sayfalar eklentiyi tespit edemesin).
