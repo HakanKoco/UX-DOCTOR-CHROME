@@ -1,10 +1,8 @@
 // Yan panel ↔ etkin sekme köprüsü. Analiz betiği yalnızca burada, kullanıcı eylemiyle enjekte edilir.
 // CRXJS `?iife` importu: betiği tek parça (IIFE) olarak derler ve dosya yolunu döndürür.
 import analyzerPath from '@/content/analyzer.ts?iife'
-import type { ContentApi, ContentMethod } from '@/shared/contentApi'
+import { CONTENT_API_VERSION, type ContentApi, type ContentMethod } from '@/shared/contentApi'
 
-/** Erişim izni olmayan (activeTab verilmemiş) sayfalar için isteğe bağlı izin kalıpları. Manifest ile aynı olmalı. */
-export const OPTIONAL_ORIGINS = ['http://*/*', 'https://*/*']
 
 export class TabAccessError extends Error {
   /** true: kullanıcı isteğe bağlı site iznini verirse sorun çözülebilir. */
@@ -48,16 +46,18 @@ async function invoke<M extends ContentMethod>(
   const [injection] = await chrome.scripting.executeScript({
     target: { tabId },
     // Bu fonksiyon sayfanın izole dünyasında çalışır; dış kapsamdaki değişkenlere erişemez.
-    func: async (name: string, params: unknown[]) => {
+    func: async (name: string, params: unknown[], expectedVersion: number) => {
       const api = globalThis.__uxDoctor as unknown as Record<string, (...a: unknown[]) => unknown> | undefined
-      if (!api) return { ok: false, missing: true, error: 'API yok' }
+      if (!api || (api as unknown as { version: number }).version !== expectedVersion) {
+        return { ok: false, missing: true, error: 'API yok ya da eski sürüm' }
+      }
       try {
         return { ok: true, value: await api[name](...params) }
       } catch (e) {
         return { ok: false, missing: false, error: e instanceof Error ? e.message : String(e) }
       }
     },
-    args: [method, args as unknown[]],
+    args: [method, args as unknown[], CONTENT_API_VERSION],
   })
   return injection?.result as Wrapped<Awaited<ReturnType<ContentApi[M]>>>
 }
@@ -84,17 +84,4 @@ export async function callContent<M extends ContentMethod>(
     }
     throw error
   }
-}
-
-/** Kullanıcı açıkça isterse (düğme tıklaması) isteğe bağlı site erişimi ister. */
-export function requestSiteAccess(): Promise<boolean> {
-  return chrome.permissions.request({ origins: OPTIONAL_ORIGINS })
-}
-
-export function hasSiteAccess(): Promise<boolean> {
-  return chrome.permissions.contains({ origins: OPTIONAL_ORIGINS })
-}
-
-export function revokeSiteAccess(): Promise<boolean> {
-  return chrome.permissions.remove({ origins: OPTIONAL_ORIGINS })
 }

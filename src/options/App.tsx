@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { MODEL_OPTIONS, isModelId, type ModelId } from '@/shared/models'
 import { sendToBackground } from '@/shared/messages'
 import { deleteApiKey, getPublicSettings, looksLikeApiKey, saveApiKey, saveModel } from '@/shared/settings'
+import { hasSiteAccess, revokeSiteAccess } from '@/shared/sitePermissions'
 
 type Status = { kind: 'info' | 'ok' | 'error'; text: string } | null
 
@@ -11,13 +12,21 @@ export default function App() {
   const [model, setModel] = useState<ModelId | null>(null)
   const [status, setStatus] = useState<Status>(null)
   const [busy, setBusy] = useState(false)
+  const [siteAccess, setSiteAccess] = useState(false)
 
   useEffect(() => {
     getPublicSettings().then((s) => {
       setHasApiKey(s.hasApiKey)
       setModel(s.model)
     })
+    hasSiteAccess().then(setSiteAccess)
   }, [])
+
+  async function onRevokeSiteAccess() {
+    await revokeSiteAccess()
+    setSiteAccess(await hasSiteAccess())
+    setStatus({ kind: 'info', text: 'Site erişim izni geri alındı. Analiz artık yalnızca simgeye tıklanan sekmede (activeTab) çalışır.' })
+  }
 
   async function onSaveKey(event: FormEvent) {
     event.preventDefault()
@@ -111,6 +120,22 @@ export default function App() {
           Tutarlılık için Opus 5.5 ve Sonnet 5.5'te düşünme düzeyi (effort) sabit "medium" gönderilir; bu modeller
           temperature parametresini kabul etmez. Haiku 4.5'te temperature 0 gönderilir.
         </p>
+      </section>
+
+      <section className="card" aria-labelledby="access-title">
+        <h2 id="access-title">Site erişimi</h2>
+        <p>
+          Durum: <strong>{siteAccess ? 'Tüm http/https sitelerine erişim verilmiş' : 'Yalnızca simgeye tıklanan sekme (activeTab)'}</strong>
+        </p>
+        <p className="muted">
+          Eklenti kurulumda site erişimi istemez. activeTab yetmediğinde yan paneldeki düğmeyle siz verirsiniz; buradan
+          geri alabilirsiniz.
+        </p>
+        {siteAccess && (
+          <button type="button" className="danger" onClick={onRevokeSiteAccess}>
+            Site erişim iznini geri al
+          </button>
+        )}
       </section>
 
       <p role="status" aria-live="polite" className={status ? `status ${status.kind}` : 'status'}>

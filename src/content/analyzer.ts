@@ -4,6 +4,7 @@
 import { CONTENT_API_VERSION, type ContentApi, type PageInfo, type SelectorCheck } from '@/shared/contentApi'
 import { runDeterministic } from './axeRunner'
 import { clearHighlights, highlight } from './highlight'
+import { collectSensitivitySignals } from './signals'
 
 function getPageInfo(): PageInfo {
   return {
@@ -36,6 +37,7 @@ if (globalThis.__uxDoctor?.version !== CONTENT_API_VERSION) {
     highlight,
     clearHighlights,
     checkSelectors,
+    collectSensitivitySignals,
   }
   globalThis.__uxDoctor = api
 }

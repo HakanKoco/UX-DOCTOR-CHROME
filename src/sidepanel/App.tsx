@@ -1,17 +1,21 @@
 import { useState } from 'react'
 import { CATEGORY_LABELS, DETERMINISTIC_CATEGORY_IDS } from '@/shared/axeMapping'
 import type { DeterministicRaw, PageInfo } from '@/shared/contentApi'
-import type { Finding } from '@/shared/report'
+import type { Finding, PrivacyRecord } from '@/shared/report'
+import { detectSensitivePage } from '@/shared/sensitivity'
+import { requestSiteAccess } from '@/shared/sitePermissions'
 import FindingList, { type FindingGroup } from './FindingList'
 import ManualReviewList from './ManualReviewList'
+import PrivacyPanel from './PrivacyPanel'
 import SettingsSummary, { useSettings } from './SettingsSummary'
-import { TabAccessError, callContent, getActiveTab, requestSiteAccess } from './tabBridge'
+import { TabAccessError, callContent, getActiveTab } from './tabBridge'
 
 export default function App() {
   const settings = useSettings()
   const [tabId, setTabId] = useState<number | null>(null)
   const [page, setPage] = useState<PageInfo | null>(null)
   const [det, setDet] = useState<DeterministicRaw | null>(null)
+  const [privacy, setPrivacy] = useState<PrivacyRecord | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<{ text: string; canRequestPermission: boolean } | null>(null)
 
@@ -23,6 +27,9 @@ export default function App() {
       setTabId(tab.id)
       const info = await callContent(tab.id, 'getPageInfo')
       setPage(info)
+      const signals = await callContent(tab.id, 'collectSensitivitySignals')
+      const sensitivity = detectSensitivePage(signals)
+      setPrivacy({ sensitive: sensitivity.sensitive, reasons: sensitivity.reasons, consentGiven: false })
       setDet(await callContent(tab.id, 'runDeterministic'))
     } catch (e) {
       setError({
@@ -85,6 +92,15 @@ export default function App() {
         <p className="muted">
           {page.title || '(başlıksız sayfa)'} — <code>{page.url}</code>
         </p>
+      )}
+
+      {privacy && (
+        <PrivacyPanel
+          privacy={privacy}
+          onConsentChange={(consent) =>
+            setPrivacy({ ...privacy, consentGiven: consent, consentAt: consent ? new Date().toISOString() : undefined })
+          }
+        />
       )}
 
       {det && (

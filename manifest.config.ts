@@ -36,7 +36,7 @@ export default defineManifest({
     'scripting',
   ],
   // Kurulumda istenmez. Yalnızca activeTab yetmediğinde kullanıcı yan paneldeki düğmeyle açıkça verir,
-  // ayarlar sayfasından geri alabilir. Değer src/sidepanel/tabBridge.ts içindeki OPTIONAL_ORIGINS ile aynı.
+  // ayarlar sayfasından geri alabilir. Değer src/shared/sitePermissions.ts içindeki OPTIONAL_ORIGINS ile aynı.
   optional_host_permissions: [
     'http://*/*',
     'https://*/*',

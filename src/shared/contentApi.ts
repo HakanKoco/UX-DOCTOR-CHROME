@@ -1,8 +1,10 @@
 // Sayfaya enjekte edilen analiz betiğinin (src/content/analyzer.ts) dışa açtığı API.
 // Betik, eklentinin izole dünyasında globalThis.__uxDoctor olarak durur; sayfanın kendi betikleri erişemez.
 import type { DeterministicCategoryId, Finding, ManualReviewItem, Severity } from './report'
+import type { SensitivitySignals } from './sensitivity'
 
-export const CONTENT_API_VERSION = 1
+// API değiştiğinde artırılır: sekmede eski sürüm kaldıysa yan panel betiği yeniden enjekte eder.
+export const CONTENT_API_VERSION = 2
 
 export interface PageInfo {
   /** origin + pathname (sorgu dizesi ve # kişisel veri/oturum bilgisi taşıyabileceği için alınmaz). */
@@ -47,6 +49,7 @@ export interface ContentApi {
   highlight(items: HighlightRequestItem[], scrollToFirst: boolean): HighlightResponse
   clearHighlights(): void
   checkSelectors(selectors: string[]): SelectorCheck[]
+  collectSensitivitySignals(): SensitivitySignals
 }
 
 export type ContentMethod = keyof Omit<ContentApi, 'version'>
