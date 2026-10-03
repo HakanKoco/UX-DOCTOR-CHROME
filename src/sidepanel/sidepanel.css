@@ -192,3 +192,29 @@ button.small {
   border-bottom-color: var(--accent);
   font-weight: 700;
 }
+
+.score-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.count-badge {
+  display: inline-block;
+  min-width: 1.6em;
+  border-radius: 999px;
+  padding: 0 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.count-badge.zero {
+  background: var(--border);
+  color: var(--fg);
+}
+
+.top-issues {
+  padding-left: 1.2em;
+  margin: 0;
+}

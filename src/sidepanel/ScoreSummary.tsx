@@ -39,25 +39,24 @@ export default function ScoreSummary({ scores }: { scores: ReportScores }) {
   return (
     <section aria-labelledby="score-title" className="card">
       <h2 id="score-title">Skorlar (0-100)</h2>
-      <div className="score-grid">
+      <div className="score-grid two">
         <div className="score-tile">
-          <div className="muted">Toplam</div>
-          <div className="value">{fmt(scores.overall)}</div>
-          <div className="muted">
-            {scores.llmIncluded
-              ? `%${scores.layerWeights.deterministic * 100} deterministik + %${scores.layerWeights.llm * 100} LLM`
-              : 'Yalnızca deterministik (LLM analizi yok)'}
-          </div>
-        </div>
-        <div className="score-tile">
-          <div className="muted">Deterministik (axe-core)</div>
+          <div className="muted">Deterministik (axe-core, WCAG 2.2 AA)</div>
           <div className="value">{fmt(scores.deterministic.score)}</div>
+          <div className="muted">kesin ölçüm</div>
         </div>
         <div className="score-tile">
-          <div className="muted">LLM (Norman)</div>
+          <div className="muted">LLM (Norman ilkeleri)</div>
           <div className="value">{fmt(scores.llm?.score ?? null)}</div>
+          <div className="muted">{scores.llm ? 'yorumsal' : 'henüz çalıştırılmadı'}</div>
         </div>
       </div>
+      <p className="muted">
+        Ağırlıklı toplam: <strong>{fmt(scores.overall)}</strong>{' '}
+        {scores.llmIncluded
+          ? `(%${scores.layerWeights.deterministic * 100} deterministik + %${scores.layerWeights.llm * 100} LLM)`
+          : '(yalnızca deterministik; LLM analizi yok)'}
+      </p>
       <details>
         <summary>Alt skorlar ve hesap ayrıntısı</summary>
         <LayerTable

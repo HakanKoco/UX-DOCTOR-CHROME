@@ -24,6 +24,7 @@ import LlmDetails from './LlmDetails'
 import ManualReviewList from './ManualReviewList'
 import PrivacyPanel from './PrivacyPanel'
 import ScoreSummary from './ScoreSummary'
+import TopIssues from './TopIssues'
 import SettingsSummary, { useSettings } from './SettingsSummary'
 import ValidationTools from './ValidationTools'
 import { downloadJson } from './download'
@@ -309,6 +310,7 @@ export default function App() {
       {report && (
         <>
           <ScoreSummary scores={report.scores} />
+          <TopIssues findings={[...report.deterministic.findings, ...(report.llm?.findings ?? [])]} onHighlight={highlightFindings} />
           <div className="row toolbar">
             <button type="button" onClick={exportReport}>
               Raporu JSON olarak indir

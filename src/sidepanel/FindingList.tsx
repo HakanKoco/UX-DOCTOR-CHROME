@@ -105,9 +105,12 @@ function Group({ group, ...rest }: { group: FindingGroup } & Omit<Props, 'groups
   const [visible, setVisible] = useState(PAGE_SIZE)
   const highlightable = group.findings.filter((f) => f.evidence.highlightable)
   return (
-    <details className="group" open={group.findings.length > 0 && group.findings.length <= 5}>
+    <details className="group">
       <summary>
-        {group.label} — <strong>{group.findings.length}</strong> bulgu
+        {group.label}{' '}
+        <span className={group.findings.length > 0 ? 'count-badge' : 'count-badge zero'} aria-label={`${group.findings.length} bulgu`}>
+          {group.findings.length}
+        </span>
         {group.findings.length > 0 && <span className="muted"> ({severityCounts(group.findings)})</span>}
       </summary>
       {group.findings.length > 0 && (
