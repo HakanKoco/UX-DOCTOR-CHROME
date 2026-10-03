@@ -9,7 +9,7 @@ import { buildConsistencyExport, buildHallucinationReview } from './validationEx
 
 // Bu testlerdeki "çalıştırmalar" birim testi için kurgulanmış girdilerdir; gerçek ölçüm değildir.
 
-const page: PageInfo = { url: 'https://ornek.test/', host: 'ornek.test', title: 'Örnek', lang: 'tr', viewport: { width: 1, height: 1 } }
+const page: PageInfo = { url: 'https://ornek.test/', host: 'ornek.test', title: 'Örnek', lang: 'tr', viewport: { width: 1, height: 1 }, translation: { detected: false, reasons: [] } }
 
 function fakeResult(answers: RawAnswer[], runId: string): LlmResult {
   const inv = sampleInventory()

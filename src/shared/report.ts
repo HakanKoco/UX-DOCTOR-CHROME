@@ -189,7 +189,14 @@ export interface UxReport {
   schemaVersion: string
   tool: { name: 'UX Doktor'; version: string }
   generatedAt: string
-  page: { url: string; title: string; lang: string | null }
+  page: {
+    url: string
+    title: string
+    lang: string | null
+    /** Analiz sırasında tarayıcı sayfa çevirisi açıktı (seçiciler kararsız olabilir; lang çeviri dili olabilir). */
+    translationDetected: boolean
+    translationReasons: string[]
+  }
   privacy: PrivacyRecord
   deterministic: DeterministicResult
   llm: LlmResult | null

@@ -1,7 +1,28 @@
 // Benzersiz CSS seçici üretimi. Üretilen her seçicinin tekilliği querySelectorAll ile doğrulanır.
 // Seçicilerde metin içeriği ya da aria-label kullanılmaz (kişisel veri sızmasın diye).
+//
+// Chrome sayfa çevirisi metin düğümlerini <font style="vertical-align: inherit;"> sarmalayıcılarıyla değiştirir;
+// çeviri kapanınca bu öğeler kaybolur. Tekrarlanabilirlik için <font> öğeleri seçicide hiç kullanılmaz:
+// hedef <font> ise en yakın <font> olmayan ataya çıkılır, yol kurulurken <font> atları atlanır.
 
 const STABLE_ATTRIBUTES = ['data-testid', 'data-test', 'data-qa', 'name'] as const
+
+/** Seçicide kullanılmayacak, anlamsız sarmalayıcı öğe (çeviri ya da eski HTML <font>). */
+export function isWrapperElement(el: Element): boolean {
+  return el.tagName === 'FONT'
+}
+
+/** <font> sarmalayıcılarını atlayarak en yakın anlamlı öğeyi döndürür. */
+export function meaningfulElement(el: Element): Element {
+  let current: Element = el
+  while (isWrapperElement(current) && current.parentElement) current = current.parentElement
+  return current
+}
+
+/** Seçici bir <font> adımı içeriyor mu (ör. "p > font > font", "font.x"). */
+export function selectorMentionsFont(selector: string): boolean {
+  return /(^|[\s>+~(,])font(?=$|[\s>+~.#:[),])/i.test(selector)
+}
 
 /** Seçici belgede tam olarak bir öğeyle ve bu öğeyle eşleşiyor mu. */
 export function isUniqueSelector(selector: string, el?: Element): boolean {
@@ -13,8 +34,19 @@ export function isUniqueSelector(selector: string, el?: Element): boolean {
   }
 }
 
+function nthPart(el: Element): string {
+  let part = el.tagName.toLowerCase()
+  const parent = el.parentElement
+  if (parent) {
+    const sameTag = Array.from(parent.children).filter((child) => child.tagName === el.tagName)
+    if (sameTag.length > 1) part += `:nth-of-type(${sameTag.indexOf(el) + 1})`
+  }
+  return part
+}
+
 /** Öğe ana belgede değilse (shadow DOM, iframe) null döner: bu öğeler sayfada vurgulanamaz. */
-export function uniqueSelector(el: Element): string | null {
+export function uniqueSelector(target: Element): string | null {
+  const el = meaningfulElement(target)
   if (!el.isConnected || el.getRootNode() !== document) return null
 
   if (el.id) {
@@ -32,40 +64,43 @@ export function uniqueSelector(el: Element): string | null {
   }
 
   // Alttan yukarı doğru yol oluştur; her adımda en kısa benzersiz soneki dene.
-  const parts: string[] = []
+  // Araya <font> girerse o adım atlanır ve alt-öğe birleştiricisi (" ") kullanılır.
+  let selector = ''
   let current: Element | null = el
   while (current && current !== document.documentElement) {
-    const parent: Element | null = current.parentElement
+    const part = nthPart(current)
+    let parent: Element | null = current.parentElement
+    let skippedWrapper = false
+    while (parent && isWrapperElement(parent)) {
+      parent = parent.parentElement
+      skippedWrapper = true
+    }
     if (current !== el && current.id) {
-      const anchored = [`#${CSS.escape(current.id)}`, ...parts].join(' > ')
+      const anchored = `#${CSS.escape(current.id)}${selector}`
       if (isUniqueSelector(anchored, el)) return anchored
     }
-    let part = current.tagName.toLowerCase()
-    if (parent) {
-      const currentTag = current.tagName
-      const sameTag = Array.from(parent.children).filter((child) => child.tagName === currentTag)
-      if (sameTag.length > 1) part += `:nth-of-type(${sameTag.indexOf(current) + 1})`
-    }
-    parts.unshift(part)
-    const candidate = parts.join(' > ')
-    if (isUniqueSelector(candidate, el)) return candidate
+    selector = `${part}${selector}`
+    if (isUniqueSelector(selector, el)) return selector
+    selector = `${skippedWrapper ? ' ' : ' > '}${selector}`
     current = parent
   }
-  const full = ['html', ...parts].join(' > ')
+  const full = `html${selector}`
   return isUniqueSelector(full, el) ? full : null
 }
 
 /**
- * axe'in ürettiği hedefi doğrular; benzersiz değilse öğeden kendi seçicimizi üretir.
+ * axe'in ürettiği hedefi doğrular; benzersiz değilse ya da <font> içeriyorsa öğeden kendi seçicimizi üretir.
+ * Hedef öğe <font> ise seçici en yakın anlamlı ataya işaret eder.
  * Dönen `highlightable` false ise seçici yalnızca bilgi amaçlıdır.
  */
 export function resolveSelector(axeTarget: unknown, el: Element | undefined): { selector: string; highlightable: boolean } {
+  const target = el ? meaningfulElement(el) : undefined
   if (Array.isArray(axeTarget) && axeTarget.length === 1 && typeof axeTarget[0] === 'string') {
     const t = axeTarget[0]
-    if (isUniqueSelector(t, el)) return { selector: t, highlightable: true }
+    if (!selectorMentionsFont(t) && isUniqueSelector(t, target)) return { selector: t, highlightable: true }
   }
-  if (el) {
-    const own = uniqueSelector(el)
+  if (target) {
+    const own = uniqueSelector(target)
     if (own) return { selector: own, highlightable: true }
   }
   // Shadow DOM / iframe hedefleri: axe'in iç içe hedefini okunur biçimde yaz.

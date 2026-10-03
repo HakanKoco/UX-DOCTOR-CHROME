@@ -21,7 +21,13 @@ export function buildReport(input: ReportInput): UxReport {
     schemaVersion: REPORT_SCHEMA_VERSION,
     tool: { name: 'UX Doktor', version: input.toolVersion },
     generatedAt: new Date().toISOString(),
-    page: { url: input.page.url, title: input.page.title, lang: input.page.lang },
+    page: {
+      url: input.page.url,
+      title: input.page.title,
+      lang: input.page.lang,
+      translationDetected: input.page.translation.detected,
+      translationReasons: input.page.translation.reasons,
+    },
     privacy: input.privacy,
     deterministic: {
       engine: 'axe-core',

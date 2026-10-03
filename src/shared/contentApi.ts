@@ -5,7 +5,9 @@ import type { Inventory } from './inventory'
 import type { SensitivitySignals } from './sensitivity'
 
 // API değiştiğinde artırılır: sekmede eski sürüm kaldıysa yan panel betiği yeniden enjekte eder.
-export const CONTENT_API_VERSION = 3
+export const CONTENT_API_VERSION = 4
+
+import type { TranslationResult } from './translation'
 
 export interface PageInfo {
   /** origin + pathname (sorgu dizesi ve # kişisel veri/oturum bilgisi taşıyabileceği için alınmaz). */
@@ -14,6 +16,8 @@ export interface PageInfo {
   title: string
   lang: string | null
   viewport: { width: number; height: number }
+  /** Tarayıcı sayfa çevirisi açık mı (sezgisel; src/shared/translation.ts). */
+  translation: TranslationResult
 }
 
 export interface DeterministicRaw {

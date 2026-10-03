@@ -282,6 +282,20 @@ export default function App() {
           {page.title || '(başlıksız sayfa)'} — <code>{page.url}</code>
         </p>
       )}
+      {page?.translation.detected && (
+        <div className="warning" role="note">
+          <p>
+            <strong>Sayfa çevirisi açık; seçiciler kararsız olabilir.</strong> Çeviri DOM'u değiştirir ve sayfa dilini
+            (lang) çeviri diline çevirir. Tekrarlanabilir sonuç için çeviriyi kapatıp sayfayı yenileyin ve yeniden analiz
+            edin.
+          </p>
+          <ul>
+            {page.translation.reasons.map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {privacy && (
         <PrivacyPanel

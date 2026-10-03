@@ -2,6 +2,7 @@
 // etkin sekmeye enjekte edilir (manifest'te statik content_scripts yoktur).
 // Salt okunurdur: tıklama, form gönderme, klavye simülasyonu yapmaz; input/textarea/select .value okumaz.
 import { CONTENT_API_VERSION, type ContentApi, type PageInfo, type SelectorCheck } from '@/shared/contentApi'
+import { detectTranslation } from '@/shared/translation'
 import { runDeterministic } from './axeRunner'
 import { clearHighlights, highlight } from './highlight'
 import { buildInventory } from './inventory'
@@ -14,6 +15,10 @@ function getPageInfo(): PageInfo {
     title: document.title,
     lang: document.documentElement.getAttribute('lang'),
     viewport: { width: window.innerWidth, height: window.innerHeight },
+    translation: detectTranslation({
+      htmlClasses: Array.from(document.documentElement.classList),
+      fontWrapperCount: document.querySelectorAll('font[style*="vertical-align"]').length,
+    }),
   }
 }
 

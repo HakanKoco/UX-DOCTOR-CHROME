@@ -9,6 +9,7 @@ const page: PageInfo = {
   title: 'Hizmetler',
   lang: 'tr',
   viewport: { width: 1280, height: 800 },
+  translation: { detected: false, reasons: [] },
 }
 
 const det: DeterministicRaw = {
