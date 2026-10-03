@@ -83,9 +83,8 @@ export interface DeterministicResult {
   ranAt: string
   findings: Finding[]
   manualReview: ManualReviewItem[]
-  /** Kural başına geçen öğe sayıları (skor formülü için). */
+  /** Kategori başına geçen (ihlal içermeyen) öğe sayıları (skor formülü için). */
   passesByCategory: Record<DeterministicCategoryId, number>
-  score: LayerScore
 }
 
 export type RubricAnswerValue = 'evet' | 'hayir' | 'belirsiz'
@@ -108,8 +107,10 @@ export interface HallucinationStats {
   totalReferences: number
   /** Envanterde olmayan kimlik sayısı. */
   invalidReferences: number
-  /** Geçersiz atıf yüzünden düşürülen bulgu sayısı. */
+  /** Geçersiz atıf yüzünden düşürülen bulgu sayısı ("hayir" cevabının geçerli kanıtı kalmadı). */
   droppedFindings: number
+  /** Hiç kanıt göstermeyen "hayir" cevapları (halüsinasyon değil; kanıtsız olduğu için "belirsiz" sayıldı). */
+  evidencelessNegatives: number
   /** invalidReferences / totalReferences (atıf yoksa null). */
   invalidReferenceRate: number | null
   /** Envanterde olmayan kimlikler. */
@@ -126,9 +127,11 @@ export interface LlmRunRecord {
   servedModel: string
   fallbackUsed: boolean
   promptVersion: string
+  /** Tutarlılığı etkileyen parametreler (gönderildiği haliyle). */
+  parameters: { maxTokens: number; effort?: string; temperature?: number; fallbacks?: string }
   stopReason: string | null
   durationMs: number
-  usage: { inputTokens: number; outputTokens: number } | null
+  usage: { inputTokens: number; outputTokens: number; cacheReadInputTokens: number | null } | null
   /** Ham LLM yanıt metni (yapılandırılmış JSON). */
   rawResponse: string
 }
@@ -146,9 +149,22 @@ export interface LlmResult {
   answers: RubricAnswerResult[]
   findings: Finding[]
   hallucination: HallucinationStats
-  /** Şema dışı/eksik cevaplar (cevapsız soru kimlikleri). */
+  /** Cevaplanmayan soru kimlikleri (skorda "belirsiz" sayılır). */
   missingQuestionIds: string[]
-  score: LayerScore
+  /** Rubrikte olmayan ya da ikinci kez cevaplanan sorular (yok sayıldı). */
+  ignoredAnswers: number
+}
+
+export interface ReportScores {
+  deterministic: LayerScore
+  /** LLM analizi yapılmadıysa null. */
+  llm: LayerScore | null
+  /** Ağırlıklı toplam; LLM yoksa yalnızca deterministik skordur ve llmIncluded=false olur. */
+  overall: number | null
+  llmIncluded: boolean
+  layerWeights: { deterministic: number; llm: number }
+  /** Skor formülünün sürümü (src/scoring/weights.ts). */
+  formulaVersion: string
 }
 
 export interface UxReport {
@@ -159,14 +175,7 @@ export interface UxReport {
   privacy: PrivacyRecord
   deterministic: DeterministicResult
   llm: LlmResult | null
-  scores: {
-    deterministic: number | null
-    llm: number | null
-    /** Ağırlıklı toplam; LLM yoksa yalnızca deterministik skordur ve llmIncluded=false olur. */
-    overall: number | null
-    llmIncluded: boolean
-    layerWeights: { deterministic: number; llm: number }
-  }
+  scores: ReportScores
   /** LLM'e gönderilen istek gövdesi (onay ekranında gösterilenle aynı). API anahtarı içermez. */
   llmRequestPreview?: unknown
 }

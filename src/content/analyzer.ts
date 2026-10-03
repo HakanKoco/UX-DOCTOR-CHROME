@@ -4,6 +4,7 @@
 import { CONTENT_API_VERSION, type ContentApi, type PageInfo, type SelectorCheck } from '@/shared/contentApi'
 import { runDeterministic } from './axeRunner'
 import { clearHighlights, highlight } from './highlight'
+import { buildInventory } from './inventory'
 import { collectSensitivitySignals } from './signals'
 
 function getPageInfo(): PageInfo {
@@ -38,6 +39,10 @@ if (globalThis.__uxDoctor?.version !== CONTENT_API_VERSION) {
     clearHighlights,
     checkSelectors,
     collectSensitivitySignals,
+    buildInventory: (limit?: number) => {
+      clearHighlights() // vurgulama katmanı envantere girmesin
+      return buildInventory(limit)
+    },
   }
   globalThis.__uxDoctor = api
 }

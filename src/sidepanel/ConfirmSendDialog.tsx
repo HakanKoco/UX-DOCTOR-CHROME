@@ -5,6 +5,10 @@ interface Props {
   requestBody: unknown
   model: string
   runs: number
+  /** Gövde dışında gönderilen başlıklar (anahtar hariç), ör. anthropic-beta. */
+  extraHeaders: Record<string, string>
+  /** Kullanıcı mesajının okunur hali (gövdedeki JSON metninin ayrıştırılmış görünümü). */
+  readableUserPayload: unknown
   onSend: () => void
   onCancel: () => void
 }
@@ -13,7 +17,15 @@ interface Props {
  * Her LLM gönderiminden önce açılan onay ekranı. Gönderilecek JSON'un tamamı gösterilir;
  * kullanıcı "Gönder" demeden istek atılmaz.
  */
-export default function ConfirmSendDialog({ requestBody, model, runs, onSend, onCancel }: Props) {
+export default function ConfirmSendDialog({
+  requestBody,
+  model,
+  runs,
+  extraHeaders,
+  readableUserPayload,
+  onSend,
+  onCancel,
+}: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const json = JSON.stringify(requestBody, null, 2)
   const kb = (new TextEncoder().encode(json).length / 1024).toFixed(1)
@@ -50,11 +62,27 @@ export default function ConfirmSendDialog({ requestBody, model, runs, onSend, on
             gönderilecek ({kb} KB). Ekran görüntüsü, form değerleri ve sayfanın tam HTML'i gönderilmez; metinler
             maskelenmiştir.
           </p>
-          <p className="muted">API anahtarı bu gövdede yoktur; istek başlığına service worker tarafından eklenir.</p>
+          <p className="muted">
+            API anahtarı bu gövdede yoktur; <code>x-api-key</code> başlığına service worker tarafından eklenir. Diğer
+            başlıklar: <code>anthropic-dangerous-direct-browser-access: true</code>
+            {Object.entries(extraHeaders).map(([k, v]) => (
+              <span key={k}>
+                , <code>{`${k}: ${v}`}</code>
+              </span>
+            ))}
+            .
+          </p>
         </div>
+        <h3>İstek gövdesi (gönderilecek JSON'un tamamı)</h3>
         <pre className="preview" tabIndex={0} aria-label="Gönderilecek JSON">
           {json}
         </pre>
+        <details>
+          <summary>Kullanıcı mesajının okunur görünümü (yukarıdaki "content" metninin aynısı)</summary>
+          <pre className="preview" tabIndex={0} aria-label="Kullanıcı mesajı, okunur görünüm">
+            {JSON.stringify(readableUserPayload, null, 2)}
+          </pre>
+        </details>
         <div className="row">
           <button type="button" onClick={onSend}>
             Gönder

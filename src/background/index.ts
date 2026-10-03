@@ -1,6 +1,7 @@
-import type { BackgroundRequest, VerifyKeyResponse } from '@/shared/messages'
+import { LLM_PORT_NAME, type BackgroundRequest, type LlmPortRequest, type VerifyKeyResponse } from '@/shared/messages'
 import { getPublicSettings } from '@/shared/settings'
 import { createClient, describeApiError } from './claudeClient'
+import { runLlmCall } from './llmCall'
 
 // Araç çubuğu ikonuna tıklanınca popup yerine yan panel açılır.
 chrome.sidePanel
@@ -28,4 +29,23 @@ chrome.runtime.onMessage.addListener((request: BackgroundRequest, sender, sendRe
     return true
   }
   return false
+})
+
+// LLM çağrıları port üzerinden gelir (yalnızca kendi eklenti sayfalarımızdan).
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== LLM_PORT_NAME) return
+  if (port.sender?.id !== chrome.runtime.id || !port.sender.url?.startsWith(chrome.runtime.getURL(''))) {
+    port.disconnect()
+    return
+  }
+  port.onMessage.addListener((message: LlmPortRequest) => {
+    if (message.type !== 'run') return // "ping": yalnızca service worker'ı uyanık tutar
+    runLlmCall(message.requestId, message.body).then((response) => {
+      try {
+        port.postMessage(response)
+      } catch {
+        // Panel kapandıysa yanıt bırakılır.
+      }
+    })
+  })
 })
