@@ -462,9 +462,15 @@ export function fallbackRuleText(ruleId: string, ctx: RuleContext): RuleText {
 }
 
 /** Bulgunun Türkçe açıklaması ve somut önerisi: önce kurala özel şablon, yoksa Türkçe yedek metin. */
+/** Cümle başını büyük harf yapar (Türkçe kurallarıyla: "i" → "İ"). */
+export function capitalizeTr(text: string): string {
+  return text ? text.charAt(0).toLocaleUpperCase('tr') + text.slice(1) : text
+}
+
 export function ruleText(ruleId: string, ctx: RuleContext): RuleText {
   const template = RULE_TEMPLATES[ruleId]
-  return template ? template(ctx, elementPhrase(ctx)) : fallbackRuleText(ruleId, ctx)
+  const t = template ? template(ctx, elementPhrase(ctx)) : fallbackRuleText(ruleId, ctx)
+  return { description: capitalizeTr(t.description), fix: capitalizeTr(t.fix) }
 }
 
 /** "Elle incelenmeli" (axe incomplete) listesi için kural düzeyinde Türkçe açıklama. */

@@ -4,6 +4,7 @@ import { AXE_FORCE_ENABLED_RULES, AXE_TAGS } from './axeMapping'
 import {
   RULE_TEMPLATES,
   RULE_TITLES_TR,
+  capitalizeTr,
   elementPhrase,
   fallbackRuleText,
   manualReviewDescription,
@@ -55,8 +56,9 @@ describe('Türkçe kural şablonları', () => {
 
   it('şablonsuz (bilinmeyen) kuralda Türkçe yedek metin çalışır', () => {
     const t = ruleText('kural-yok-xyz', ctx({ tag: 'a', role: 'link', name: 'Kampüs' }))
-    expect(t).toEqual(fallbackRuleText('kural-yok-xyz', ctx({ tag: 'a', role: 'link', name: 'Kampüs' })))
-    expect(t.description).toContain('bağlantı "Kampüs" (<a>)')
+    const fb = fallbackRuleText('kural-yok-xyz', ctx({ tag: 'a', role: 'link', name: 'Kampüs' }))
+    expect(t).toEqual({ description: capitalizeTr(fb.description), fix: capitalizeTr(fb.fix) })
+    expect(t.description).toContain('Bağlantı "Kampüs" (<a>)')
     expect(t.description).toContain('kural-yok-xyz')
     expect(t.fix).toMatch(TURKISH)
     expect(t.fix).toContain('WCAG 4.1.2')
@@ -64,7 +66,7 @@ describe('Türkçe kural şablonları', () => {
 
   it('öneri öğeye özeldir: rol, ad ve etiket metne yazılır', () => {
     const t = ruleText('button-name', ctx({ tag: 'button', role: 'button', name: '' }))
-    expect(t.fix).toContain('düğme (<button>)')
+    expect(t.fix).toContain('Düğme (<button>)')
     expect(elementPhrase({ tag: 'a', role: 'link', name: 'Duyurular' })).toBe('bağlantı "Duyurular" (<a>)')
     expect(elementPhrase({ tag: '', role: null, name: '' })).toBe('ilgili öğe')
   })
@@ -87,9 +89,18 @@ describe('Türkçe kural şablonları', () => {
 
   it('aria-required-children: eksik alt roller ve feed için somut öneri', () => {
     const t = ruleText('aria-required-children', ctx({ tag: 'div', role: 'feed', checks: { 'aria-required-children': { values: ['article'] } } }))
-    expect(t.description).toContain('akış (feed) (<div>)')
+    expect(t.description).toContain('Akış (feed) (<div>)')
     expect(t.description).toContain('article')
     expect(t.fix).toContain('<article>')
+  })
+
+  it('her metin büyük harfle başlar (Türkçe i → İ)', () => {
+    expect(capitalizeTr('ilgili öğe')).toBe('İlgili öğe')
+    for (const id of Object.keys(RULE_TEMPLATES)) {
+      const t = ruleText(id, ctx({ tag: 'img', role: 'img', name: '' }))
+      expect(t.description.charAt(0), id).toBe(t.description.charAt(0).toLocaleUpperCase('tr'))
+      expect(t.fix.charAt(0), id).toBe(t.fix.charAt(0).toLocaleUpperCase('tr'))
+    }
   })
 
   it('elle incelenmeli açıklaması Türkçedir', () => {
