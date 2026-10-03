@@ -5,8 +5,9 @@ eklentisi (Manifest V3). İki katmanlıdır:
 
 - **Deterministik katman:** axe-core ile WCAG 2.2 AA kontrolleri (kontrast, alt metin, form etiketi, 24×24 px
   dokunma hedefi, sayfa dili ve diğer AA ihlalleri).
-- **Yorumsal katman:** Claude API ile Don Norman'ın 6 ilkesine göre evet/hayır rubriği. LLM puan vermez; her cevap
-  için kanıt öğe kimlikleri ve gerekçe döndürür, puanı kod hesaplar.
+- **Yorumsal katman:** Claude API ya da Google Gemini API (ücretsiz katman, Flash) ile Don Norman'ın 6 ilkesine göre
+  evet/hayır rubriği. Sağlayıcı ayarlardan seçilir. LLM puan vermez; her cevap için kanıt öğe kimlikleri ve gerekçe
+  döndürür, puanı kod hesaplar.
 
 Kanıtı olmayan bulgu, bulgu sayılmaz: her bulgu benzersiz bir CSS seçiciye bağlıdır, sayfada vurgulanabilir ve
 isteğe bağlı olarak kırpılmış ekran görüntüsüyle gösterilir.
@@ -36,7 +37,8 @@ isteğe bağlı olarak kırpılmış ekran görüntüsüyle gösterilir.
 ## Kurulum
 
 Gereksinimler: Node.js **22.12 veya üstü** (Vitest 5 ve Vite 8 bu sürümü ister), Chrome **114 veya üstü**
-(`chrome.sidePanel`), bir Claude API anahtarı.
+(`chrome.sidePanel`), bir Claude API anahtarı **ya da** bir Gemini API anahtarı
+([Google AI Studio → API key](https://aistudio.google.com/apikey); ücretsiz katman).
 
 ```bash
 npm install
@@ -49,11 +51,17 @@ Chrome'a yükleme:
 2. **Paketlenmemiş öğe yükle** → projenin `dist/` klasörünü seçin.
 3. Araç çubuğundaki yapboz simgesinden **UX Doktor**'u sabitleyin.
 4. Simgeye tıklayın: yan panel açılır. Panelde **Ayarlar** düğmesine basın.
-5. Ayarlar sayfasında Claude API anahtarınızı girin, **Kaydet** ve **Anahtarı doğrula** deyin. Model seçin
-   (varsayılan: `claude-opus-5-5`).
+5. Ayarlar sayfasında **LLM sağlayıcısı**nı seçin: Claude ya da Gemini.
+6. Seçtiğiniz sağlayıcının anahtar kartına anahtarınızı girin, sonra **Kaydet** ve **Anahtarı doğrula** deyin.
+   Doğrulama yalnızca model bilgisini sorgular, sayfa verisi göndermez.
+7. Model seçin. Varsayılanlar: Claude için `claude-opus-5-5`, Gemini için `gemini-3.8-flash`.
 
-Anahtar yalnızca bu tarayıcıda `chrome.storage.local` içinde tutulur; hiçbir dosyaya yazılmaz, senkronize edilmez,
-loglanmaz.
+Anahtarlar yalnızca bu tarayıcıda `chrome.storage.local` içinde, her sağlayıcı için ayrı alanda tutulur. Hiçbir
+dosyaya yazılmaz, senkronize edilmez, loglanmaz.
+
+> **Gemini ücretsiz katman uyarısı:** Google, ücretsiz katmanda gönderilen içeriği ve yanıtları ürünlerini ve makine
+> öğrenmesi teknolojilerini geliştirmek için kullanabilir; insan incelemeciler girdi ve çıktıları okuyabilir.
+> Ayrıntı: [Gizlilik ve güvenlik](#gizlilik-ve-güvenlik).
 
 ## Kullanım
 
@@ -88,12 +96,13 @@ flowchart LR
         Privacy["src/shared<br/>maskeleme · hassas sayfa tespiti · istek gövdesi · yanıt doğrulama"]
         Scoring["src/scoring<br/>saf skor fonksiyonları · ağırlıklar"]
         Confirm["Onay ekranı<br/>gönderilecek JSON'un tamamı"]
-        SW["Service worker<br/>Claude API istemcisi"]
-        Options["Ayarlar sayfası<br/>anahtar · model · site izni"]
+        SW["Service worker<br/>Claude / Gemini istemcisi"]
+        Options["Ayarlar sayfası<br/>sağlayıcı · anahtarlar · model · site izni"]
         Storage[("chrome.storage.local")]
     end
 
     API[("Claude API<br/>api.anthropic.com")]
+    GAPI[("Gemini API<br/>generativelanguage.googleapis.com")]
     Report[["Rapor JSON / tutarlılık JSON /<br/>halüsinasyon listesi"]]
 
     Panel -->|"chrome.scripting.executeScript"| Analyzer
@@ -101,8 +110,10 @@ flowchart LR
     Panel --> Privacy
     Privacy -->|"maskelenmiş envanter"| Confirm
     Confirm -->|"Gönder: port mesajı"| SW
-    SW -->|"HTTPS, x-api-key, yapılandırılmış JSON şeması"| API
+    SW -->|"seçili sağlayıcı Claude ise:<br/>HTTPS, x-api-key, JSON şeması"| API
+    SW -->|"seçili sağlayıcı Gemini ise:<br/>HTTPS, x-goog-api-key, JSON şeması"| GAPI
     API -->|"rubrik cevapları"| SW
+    GAPI -->|"rubrik cevapları"| SW
     SW --> Panel
     Panel -->|"kimlik doğrulama, halüsinasyon sayımı"| Privacy
     Panel --> Scoring
@@ -113,7 +124,7 @@ flowchart LR
 
 | Klasör | İçerik |
 |---|---|
-| `src/background` | Service worker: yan panel davranışı, anahtar doğrulama, Claude API çağrısı (`llmCall.ts`) |
+| `src/background` | Service worker: yan panel davranışı, anahtar doğrulama, LLM çağrısı (`llmCall.ts`; Claude: `claudeClient.ts`, Gemini: `geminiClient.ts`) |
 | `src/content` | Enjekte edilen analiz betiği: axe-core çalıştırma, seçici üretimi, envanter, hassas sayfa sinyalleri, vurgulama |
 | `src/sidepanel` | Yan panel arayüzü, sekme köprüsü, LLM istemcisi, ekran görüntüsü, dışa aktarma |
 | `src/options` | Ayarlar sayfası |
@@ -135,10 +146,11 @@ dosya üzerinden tespit edemez.
 | İzin | Neden gerekli | Kurulumda uyarı |
 |---|---|---|
 | `sidePanel` | Arayüz Chrome yan panelinde; simge tıklaması paneli açar (`setPanelBehavior`). | Hayır |
-| `storage` | API anahtarı ve model seçimi `chrome.storage.local` içinde. | Hayır |
+| `storage` | Sağlayıcı seçimi, API anahtarları ve model seçimi `chrome.storage.local` içinde. | Hayır |
 | `activeTab` | Yalnızca kullanıcının simgeye tıkladığı sekmeye geçici erişim; sayfadan ayrılınca düşer. Ekran görüntüsü (`captureVisibleTab`) de bu izinle çalışır. | Hayır |
 | `scripting` | Analiz betiğini yalnızca analiz istendiğinde enjekte etmek (`executeScript`). | Hayır |
 | `host_permissions: https://api.anthropic.com/*` | Service worker'ın Claude API isteklerinin CORS nedeniyle engellenmemesi; yalnızca API alan adı. | Evet (yalnızca bu alan) |
+| `host_permissions: https://generativelanguage.googleapis.com/*` | Service worker'ın Gemini API isteklerinin (`generateContent`, anahtar doğrulamada `models.get`) CORS nedeniyle engellenmemesi; yalnızca API alan adı, sayfa içeriğine erişim vermez. | Evet (yalnızca bu alan) |
 | `optional_host_permissions: http://*/*, https://*/*` | **Kurulumda istenmez.** activeTab yetmezse (ör. panel açıkken başka sekmeye geçildiyse) kullanıcı paneldeki düğmeyle açıkça verir; Ayarlar'dan geri alınır. | İstendiği anda |
 
 Bilerek kullanılmayanlar: statik `content_scripts`, `tabs`, `debugger`, `downloads` (indirme `<a download>` ile),
@@ -194,21 +206,55 @@ biçimindedir. "Hayır" cevabının şiddeti rubrikte sabittir; LLM belirlemez.
 | Tutarlılık | 5 | Aynı işlevdeki öğeler tutarlı görünüm kullanıyor mu? |
 | Sağlarlık | 5 | Tıklanabilir öğeler doğru öğe/rolle mi işaretlenmiş? |
 
-**Çıktı:** her soru için `{questionId, answer: evet|hayir|belirsiz, evidenceIds, rationale, fix}`. Yanıt,
-`output_config.format` ile JSON şemasına zorlanır ve istemcide yeniden doğrulanır.
+**Çıktı:** her soru için `{questionId, answer: evet|hayir|belirsiz, evidenceIds, rationale, fix}`. Yanıt JSON
+şemasına zorlanır: Claude'da `output_config.format`, Gemini'de `generationConfig.responseFormat.text.schema`. İki
+sağlayıcıya aynı şema gider; şema yalnızca ikisinin de desteklediği anahtar sözcükleri kullanır. Yanıt istemcide
+yeniden doğrulanır.
 
-**Tutarlılığı artıran ayarlar** (Claude API dokümantasyonuna göre):
+**Sağlayıcıdan bağımsız kısım:** iki sağlayıcıya da aynı sistem prompt'u ve aynı kullanıcı mesajı (rubrik +
+maskelenmiş envanter) gider. Aynı onay ekranı, aynı kimlik doğrulaması ve aynı skor hesabı kullanılır. Her
+çalıştırma kaydına sağlayıcı (`provider`), istenen/yanıtlayan model ve parametreler yazılır.
+
+**Tutarlılığı artıran ayarlar** (sağlayıcıların resmi dokümantasyonuna göre):
 
 | Model | Ayar |
 |---|---|
-| `claude-opus-5-5` (varsayılan) | `effort: "medium"` sabit. Bu model `temperature` kabul etmez (400 döner); düşünme her zaman açıktır. |
+| `claude-opus-5-5` (Claude varsayılanı) | `effort: "medium"` sabit. Bu model `temperature` kabul etmez (400 döner); düşünme her zaman açıktır. |
 | `claude-sonnet-5-5` | `effort: "medium"` sabit; varsayılan dışı `temperature` 400 döner. |
 | `claude-haiku-4-5` | `temperature: 0`; `effort` desteklenmez. |
+| `gemini-3.8-flash` (Gemini varsayılanı) | `temperature: 1.0`, `thinkingConfig.thinkingLevel: "MEDIUM"` sabit. |
+| `gemini-3.5-flash-lite` | Aynı ayarlar. |
+
+**Gemini'de temperature neden 0 değil, 1.0?** Google, Gemini 3 modelleri için şunu yazıyor: *"For all Gemini 3
+models, we strongly recommend keeping the temperature parameter at its default value of 1.0. Changing the temperature
+(setting it below 1.0) may lead to unexpected behavior, such as looping or degraded performance, particularly in
+complex mathematical or reasoning tasks."* ([Gemini 3 rehberi](https://ai.google.dev/gemini-api/docs/gemini-3)).
+Bu yüzden önerilen değer açıkça gönderilir ve her çalıştırmaya yazılır. Tutarlılık başka yollarla sağlanır:
+- düşünme düzeyi sabittir (`MEDIUM`; Flash'ta varsayılan `HIGH`, Claude tarafındaki `effort: "medium"` ile aynı düzey),
+- rubrik kapalı uçludur,
+- aynı gövde N kez gönderilir.
+
+Sapma 10 puanı aşarsa `temperature: 0` ayrı bir deney olarak denenecek ve sonucu [Doğrulama](#a-tutarlılık-testi)
+bölümüne yazılacaktır.
 
 Bunlara ek olarak:
 - Rubrik ve prompt sabittir ve sürümlüdür (`PROMPT_VERSION`, her çalıştırmaya yazılır).
 - Tutarlılık testinde envanter bir kez çıkarılır ve aynı gövde N kez gönderilir.
-- `cache_control` ile tekrarlanan girdi önbellekten okunur; bu yalnızca maliyeti etkiler, çıktıyı etkilemez.
+- Claude'da `cache_control` ile tekrarlanan girdi önbellekten okunur; bu yalnızca maliyeti etkiler, çıktıyı
+  etkilemez.
+
+**İstek sınırı (tutarlılık testi):** Google ücretsiz katmanın sayısal sınırlarını dokümanda yayımlamıyor ("can be
+viewed in Google AI Studio"). Bu yüzden temkinli bir kural uygulanır (`src/shared/retry.ts`, birim testli):
+- Gemini çalıştırmaları arasında **15 sn** beklenir.
+- **429** (`RESOURCE_EXHAUSTED`) ya da **503** hatasında aynı istek üstel beklemeyle en çok **4 kez** yeniden
+  gönderilir: 2 s, 4 s, 8 s, 16 s, her birine 0-1 s rastgele sapma eklenir, üst sınır 60 s.
+- Diğer hatalar (400, 403, 404) yeniden denenmez.
+- Claude'da çalıştırmalar arası bekleme yoktur; 429 ve 529 (overloaded) için aynı yeniden deneme kuralı geçerlidir.
+- Yeniden deneme sayısı çalıştırma kaydına (`retries`) ve tutarlılık dışa aktarımına (`pacing`) yazılır.
+- Onay ekranı bu davranışı gönderimden önce açıkça yazar.
+
+Kaynak: [Gemini sorun giderme — 429/503 için üstel bekleme](https://ai.google.dev/gemini-api/docs/troubleshooting),
+[istek sınırları](https://ai.google.dev/gemini-api/docs/rate-limits).
 
 **Ret yedeği:** Opus/Sonnet 5.5'te `fallbacks: "default"` (beta başlığı `server-side-fallback-2026-07-01`) gönderilir.
 Model isteği güvenlik nedeniyle reddederse API isteği önerilen başka bir modelde çalıştırır. Hangi modelin yanıtladığı
@@ -221,10 +267,21 @@ kılar.
    (ör. hiç canlı bölge yok) için yalnızca `SAYFA` kimliği geçerlidir.
 2. **Seçici kontrolü:** bulgu seçicileri sayfada yeniden aranır ve tek öğeyle eşleşip eşleşmediği raporlanır.
 
-**Service worker çağrısı:** API çağrısı resmi `@anthropic-ai/sdk` ile service worker'dan yapılır.
-- **Tarayıcı başlığı:** `dangerouslyAllowBrowser: true` seçeneği tarayıcıdan doğrudan erişim için gereken
-  `anthropic-dangerous-direct-browser-access: true` başlığını ekler.
-- **Otomatik tekrar kapalı:** `maxRetries: 0`; kullanıcının onayladığından fazla istek gitmez.
+**Service worker çağrısı:** API çağrısı service worker'dan yapılır.
+- **Claude:** resmi `@anthropic-ai/sdk`. `dangerouslyAllowBrowser: true` seçeneği tarayıcıdan doğrudan erişim için
+  gereken `anthropic-dangerous-direct-browser-access: true` başlığını ekler.
+- **Gemini:** `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`, ek paket
+  olmadan `fetch` ile. Böylece onay ekranındaki gövde, gönderilen gövdenin birebir aynısı olur. Anahtar URL'ye değil
+  `x-goog-api-key` başlığına konur; hata mesajlarında geçerse maskelenir.
+  - Google yeni projelere Interactions API'yi öneriyor. Yine de `generateContent` seçildi: dokümanda *"remains fully
+    supported"* yazıyor, durumsuz çalışıyor (Interactions isteği varsayılan olarak saklıyor) ve yanıt yapısı ayrıntılı
+    belgelenmiş.
+  - Yanıttan `finishReason` (`MAX_TOKENS`, `SAFETY` vb.), `promptFeedback.blockReason`, `modelVersion` (yanıtlayan
+    model) ve `usageMetadata` alınır.
+  - Kaynak: [generateContent API](https://ai.google.dev/api/generate-content),
+    [yapılandırılmış çıktı](https://ai.google.dev/gemini-api/docs/generate-content/structured-output).
+- **Otomatik tekrar kapalı:** SDK habersiz tekrar göndermez (`maxRetries: 0`). Yeniden deneme yalnızca tutarlılık
+  testinde, yukarıdaki kurala göre ve onay ekranında açıklanarak yapılır.
 - **Uyanık tutma:** yan panel port üzerinden 20 saniyede bir ping atar; uzun süren istek sırasında service worker
   uykuya geçmez.
 
@@ -251,8 +308,24 @@ kılar.
 - **Vurgulama katmanı:** shadow DOM içinde, `pointer-events: none`; temizlenince tamamen kaldırılır. Analiz ve
   envanter öncesinde otomatik temizlenir, böylece sonucu etkilemez.
 - **Uzak kod yok:** CDN betiği, `eval` ve uzaktan import kullanılmaz; axe-core paketten gömülüdür.
-- **API anahtarı:** koda gömülü değildir, repoya girmez, loglanmaz, panele gönderilmez. Service worker her çağrıda
-  storage'dan okur.
+- **API anahtarları:** Claude ve Gemini anahtarları ayrı alanlarda tutulur. Koda gömülü değildir, repoya girmez,
+  loglanmaz, panele gönderilmez. Service worker her çağrıda storage'dan okur.
+- **Gemini ücretsiz katmanında veri kullanımı (etik):** Google'ın [Gemini API ek koşulları](https://ai.google.dev/gemini-api/terms)
+  "Unpaid Services" için şunları söylüyor:
+  - *"Google uses the content you submit to the Services and any generated responses to provide, improve, and develop
+    Google products and services and machine learning technologies"* — yani gönderilen veri model eğitimi dahil ürün
+    geliştirmede kullanılabilir. [Fiyatlandırma sayfası](https://ai.google.dev/gemini-api/docs/pricing) da ücretsiz
+    katman için "Used to improve our products: Yes" yazar.
+  - *"human reviewers may read, annotate, and process your API input and output"* — insanlar girdi ve çıktıları
+    okuyabilir. Google bunu yapmadan önce verinin hesap, anahtar ve projeyle bağını kopardığını belirtiyor.
+  - *"Do not submit sensitive, confidential, or personal information to the Unpaid Services."*
+
+  Bu yüzden:
+  - Gemini'ye de yalnızca maskelenmiş öğe envanteri gider (form değeri, ekran görüntüsü ya da tam HTML yok).
+  - Gemini seçiliyse onay ekranında ve ayarlar sayfasında bu durum kısa bir uyarıyla gösterilir.
+  - Hassas sayfa kilidi Gemini için de aynen geçerlidir.
+  - Ödevde yalnızca herkese açık sayfalar analiz edilir. Kişisel veya sağlık verisi içeren sayfalarda Gemini ücretsiz
+    katmanı kullanılmamalıdır.
 
 ---
 
@@ -320,17 +393,18 @@ panelde ve raporda **ayrı** gösterilir.
 
 ## Rapor biçimi
 
-Şemanın tek kaynağı [`src/shared/report.ts`](src/shared/report.ts) dosyasıdır (`schemaVersion: 1.0.0`). Raporun ana
-alanları:
+Şemanın tek kaynağı [`src/shared/report.ts`](src/shared/report.ts) dosyasıdır (`schemaVersion: 1.1.0`).
+1.1.0 sürümünde çalıştırma kaydına `provider`, `retries` ve `parameters.thinkingLevel` eklendi; `llmRequestPreview`
+artık `{provider, model, body}` biçiminde. Raporun ana alanları:
 
 | Alan | İçerik |
 |---|---|
 | `page` | Sayfanın kökeni + yolu (sorgu dizesi alınmaz), başlık, dil |
 | `privacy` | Hassas sayfa sonucu, gerekçeler, açık onay ve zamanı |
 | `deterministic` | axe sürümü, etiketler, bulgular, elle incelenmeli listesi, kategori başına geçen öğe sayıları |
-| `llm` | Çalıştırma kaydı (ham yanıt, prompt sürümü, istenen/yanıtlayan model, parametreler, zaman, token), envanter kesilme bilgisi, rubrik cevapları, bulgular, halüsinasyon istatistikleri |
+| `llm` | Çalıştırma kaydı (sağlayıcı, ham yanıt, prompt sürümü, istenen/yanıtlayan model, parametreler, yeniden deneme sayısı, zaman, token), envanter kesilme bilgisi, rubrik cevapları, bulgular, halüsinasyon istatistikleri |
 | `scores` | Deterministik ve LLM katman skorları (alt skorlar ve hesap ayrıntısıyla), toplam, ağırlıklar, formül sürümü |
-| `llmRequestPreview` | LLM'e gönderilen istek gövdesi (onay ekranındakiyle aynı; anahtar içermez) |
+| `llmRequestPreview` | LLM'e gönderilen istek: sağlayıcı, model ve gövde (gövde onay ekranındakiyle aynı; anahtar içermez) |
 
 Her bulgu (`Finding`) şu alanları içerir:
 - `selector`; LLM bulgularında ek olarak `elementId`,
@@ -366,12 +440,14 @@ Yöntem:
 | Alan | Değer |
 |---|---|
 | Sayfa | TODO: gerçek ölçüm |
-| Model / prompt sürümü / N | TODO: gerçek ölçüm |
+| Sağlayıcı / model / prompt sürümü / N | TODO: gerçek ölçüm |
+| temperature / thinkingLevel ya da effort (dışa aktarımdaki `parameters`) | TODO: gerçek ölçüm |
+| Yeniden deneme sayısı (429/503) | TODO: gerçek ölçüm |
 | İlke başına ortalama, std, min-max | TODO: gerçek ölçüm (betiğin ürettiği tabloyu buraya yapıştırın) |
 | En büyük sapma (max − min) | TODO: gerçek ölçüm |
 | Sapma 10 puanı aştı mı? | TODO: gerçek ölçüm |
 | Aştıysa neden (cevabı değişen sorular: dışa aktarımdaki `questionAgreement`) | TODO: gerçek ölçüm |
-| Çözüm ve çözüm sonrası ölçüm | TODO: gerçek ölçüm |
+| Çözüm ve çözüm sonrası ölçüm (Gemini'de gerekirse ayrı deney: `temperature: 0`) | TODO: gerçek ölçüm |
 
 ### b) Manuel karşılaştırma
 
@@ -427,6 +503,19 @@ Kontrol iki aşamalıdır:
 - **LLM değişkenliği:** Opus 5.5 ve Sonnet 5.5 `temperature` kabul etmez. Tutarlılık için effort sabitlenir ve rubrik
   kapalı uçludur, ancak çalıştırmalar arası fark tamamen sıfırlanamaz. Bu fark tutarlılık testiyle ölçülür.
   Sunucu taraflı yedek model devreye girerse (ret durumunda) yanıtı başka bir model üretir; kayıtta görünür.
+- **Gemini'de temperature 1.0:** Google'ın önerisi nedeniyle temperature düşürülmez. Bu yüzden Gemini
+  çalıştırmalarında örnekleme rastgeleliği Claude Haiku'daki `temperature: 0`'dan yüksek olabilir. Bu fark tutarlılık
+  testiyle ölçülür; gerekirse `temperature: 0` ayrı deney olarak denenir (Google bu durumda döngü ve kalite düşüşü
+  uyarısı veriyor).
+- **Gemini ücretsiz katmanı ve veri:** Ücretsiz katmanda gönderilen içerik ve yanıtlar Google ürünlerini ve makine
+  öğrenmesi teknolojilerini (model eğitimi dahil) geliştirmede kullanılabilir, insan incelemeciler tarafından
+  okunabilir ([koşullar](https://ai.google.dev/gemini-api/terms)). Maskeleme kurallı (regex) çalıştığı için kişi adı
+  gibi veriler maskelenmeyebilir. Bu nedenle Gemini yalnızca herkese açık sayfalarda kullanılmalıdır.
+- **Gemini istek sınırları bilinmiyor:** Ücretsiz katman sınırları dokümanda sayı olarak yayımlanmıyor, projeye göre
+  AI Studio'da görülüyor. 15 sn bekleme ve 4 yeniden deneme bir tahmindir; sınır daha sıkıysa tutarlılık testinde bazı
+  çalıştırmalar başarısız olabilir. Başarısız çalıştırmalar dışa aktarımda `failures` alanına yazılır.
+- **Gemini `servedModel`:** Yanıtlayan model `modelVersion` alanından alınır. Bu alan, istenen model adından farklı
+  bir sürüm adı içerebilir.
 - **Maskeleme kurallı (regex) çalışır:**
   - Kişi adları ve serbest metindeki sağlık bilgisi maskelenmez.
   - Şüpheli uzun sayılar (13-19 hane) kart olarak maskelenebilir; bu bilinçli olarak fazla maskelemedir.
@@ -449,8 +538,11 @@ npm test            # Vitest birim testleri
 npm run dev         # CRXJS geliştirme sunucusu (HMR)
 ```
 
-Birim testleri: maskeleme, hassas sayfa tespiti, axe eşlemesi, LLM istek gövdesi ve yanıt doğrulama, skor formülü,
-tutarlılık istatistikleri, rapor ve dışa aktarım kurucuları (`src/**/*.test.ts`). Testlerde gerçek API anahtarı ve
+Birim testleri (`src/**/*.test.ts`):
+- maskeleme, hassas sayfa tespiti, axe eşlemesi,
+- LLM istek gövdesi (Claude ve Gemini) ve yanıt doğrulama, Gemini yanıt ayrıştırma,
+- 429/503 yeniden deneme kuralı, anahtar biçim denetimi,
+- skor formülü, tutarlılık istatistikleri, rapor ve dışa aktarım kurucuları. Testlerde gerçek API anahtarı ve
 gerçek kişisel veri kullanılmaz.
 
 Commit öncesi: `npm run build`, `npx tsc --noEmit -p tsconfig.app.json` ve `npm test` hatasız geçmelidir. Kök

@@ -34,19 +34,23 @@ deterministik %20, LLM %20, skorlama %15, README/demo/rapor %10, yansıtma %10. 
    node -v            # 22.12 veya üstü olmalı
    npm install
    npm run build
-   npm test           # 106 test geçmeli
+   npm test           # 132 test geçmeli
    ```
 2. Chrome → `chrome://extensions` → **Geliştirici modu** açık → **Paketlenmemiş öğe yükle** → `dist/` klasörü.
 3. Yapboz simgesinden **UX Doktor**'u sabitle.
-4. Claude API anahtarını [console.anthropic.com](https://console.anthropic.com) üzerinden al. Hesapta bakiye ya da
-   kredi olsun.
-5. Simge → yan panel → **Ayarlar**. Anahtarı yapıştır → **Kaydet** → **Anahtarı doğrula**. "Anahtar geçerli" mesajını
-   gör.
+4. Bir API anahtarı al:
+   - **Claude:** [console.anthropic.com](https://console.anthropic.com). Hesapta bakiye ya da kredi olmalı.
+   - **Gemini (ücretsiz):** [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
+5. Simge → yan panel → **Ayarlar**. Önce **LLM sağlayıcısı**nı seç. Sonra o sağlayıcının kartına anahtarı yapıştır →
+   **Kaydet** → **Anahtarı doğrula** → "Anahtar geçerli" mesajını gör.
 6. Herhangi bir herkese açık sayfada simgeye **o sekmedeyken** tıkla → **Bu sayfayı analiz et**.
 
-**Maliyet:** Her LLM analizinden sonra panel kullanılan girdi/çıktı token sayısını gösterir. Gerçek maliyeti Anthropic
-Console'daki **Usage** sayfasından izle. Bütçen kısıtlıysa Ayarlar'dan daha ucuz bir model seçebilirsin. Ama hangi
-modeli kullandıysan raporda ve README'de aynısını yaz. Tutarlılık testini de aynı modelle yap.
+**Maliyet:** Her LLM analizinden sonra panel kullanılan girdi/çıktı token sayısını gösterir. Claude'da gerçek
+maliyeti Anthropic Console'daki **Usage** sayfasından izle. Gemini ücretsiz katmanda ücret yoktur ama istek sınırı
+vardır; sınırını AI Studio'da görebilirsin. Gemini ücretsiz katmanında gönderilen veri Google tarafından ürün ve model
+geliştirmede kullanılabilir, insanlar okuyabilir; yalnızca herkese açık sayfaları analiz et.
+
+Hangi sağlayıcıyı ve modeli kullandıysan raporda ve README'de aynısını yaz. Tutarlılık testini de aynı modelle yap.
 
 ### Sık karşılaşılabilecek sorunlar
 
@@ -277,6 +281,7 @@ npm run typecheck
 npm test
 git status                         # beklenmeyen dosya yok mu?
 git grep -n "sk-ant-api" || echo "anahtar yok"   # gerçek anahtar repoda OLMAMALI
+git grep -n "<Gemini anahtarının ilk 10 karakteri>" || echo "anahtar yok"   # Gemini kullandıysan
 ```
 
 Kontrol listesi:

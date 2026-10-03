@@ -16,9 +16,12 @@ Gereksinim takibi: docs/GEREKSINIMLER.md (her fazda güncellenir).
 ## Sabit teknoloji kararları (değiştirme)
 - Chrome Extension Manifest V3, TypeScript, Vite + @crxjs/vite-plugin, React.
 - Arayüz: chrome.sidePanel (popup değil). Ayrı bir ayarlar sayfası (options page).
-- LLM: Claude API, service worker'dan doğrudan çağrılır. Tarayıcıdan çağrı için gereken başlıkları resmi dokümandan doğrula.
-- API anahtarını kullanıcı ayarlar sayfasında girer, `chrome.storage.local` içinde tutulur (`sync` değil).
-- Model adı ayarlar sayfasından seçilebilir. Varsayılanı güncel dokümantasyondan seç.
+- LLM: Claude API **veya** Google Gemini API (ücretsiz katman, Flash modeli). İkisi de service worker'dan doğrudan çağrılır. Tarayıcıdan çağrı için gereken başlıkları resmi dokümandan doğrula.
+- Sağlayıcı (Claude / Gemini) ayarlar sayfasından seçilir. Her sağlayıcının API anahtarı ayrı alanda girilir; ikisi de `chrome.storage.local` içinde tutulur (`sync` değil).
+- Model adı ayarlar sayfasından seçilebilir. Varsayılanı güncel dokümantasyondan seç (Gemini: ücretsiz katmanda kullanılabilen kararlı Flash modeli).
+- Gemini `generateContent` uç noktasıyla, SDK'sız `fetch` ile çağrılır. Anahtar URL'ye değil `x-goog-api-key` başlığına konur. temperature 1.0 (Google'ın Gemini 3 önerisi), thinkingLevel "MEDIUM" sabittir.
+- Gizlilik, onay ekranı, maskeleme, envanter kimliği doğrulaması ve çalıştırma kaydı kuralları iki sağlayıcı için de aynıdır. Çalıştırma kaydına sağlayıcı ve model adı yazılır.
+- Gemini ücretsiz katmanında Google verileri ürün ve model geliştirmede kullanabilir, insanlar okuyabilir. Bu, onay ekranında uyarı olarak gösterilir ve README'de yazılıdır.
 - LLM'e YALNIZCA maskelenmiş DOM özeti gider. Ekran görüntüsü LLM'e gönderilmez.
 - İzinler en az düzeyde tutulur. Her izin README'de gerekçelendirilir.
 
