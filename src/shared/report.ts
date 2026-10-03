@@ -177,8 +177,15 @@ export interface LlmResult {
   hallucination: HallucinationStats
   /** Cevaplanmayan soru kimlikleri (skorda "belirsiz" sayılır). */
   missingQuestionIds: string[]
-  /** Rubrikte olmayan ya da ikinci kez cevaplanan sorular (yok sayıldı). */
+  /** Rubrikte olmayan, ikinci kez cevaplanan ya da şemaya uymayan cevaplar (yok sayıldı). */
   ignoredAnswers: number
+  /** Şemaya uymadığı için atlanan cevap sayısı. */
+  malformedAnswers: number
+  /**
+   * Yanıtın tamamı şemaya uymadıysa Türkçe hata. Bu durumda cevap/bulgu yoktur, skor hesaplanmaz;
+   * ham yanıt run.rawResponse içinde saklanır.
+   */
+  schemaError?: string
 }
 
 export interface ReportScores {

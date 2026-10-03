@@ -34,6 +34,8 @@ export interface ConsistencyFailure {
   runIndex: number
   timestamp: string
   error: string
+  /** Yanıt geldi ama şemaya uymadıysa ham yanıt (çalıştırma kaydı kaybolmasın). */
+  rawResponse?: string
 }
 
 export interface ConsistencyExport {

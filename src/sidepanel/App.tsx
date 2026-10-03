@@ -119,9 +119,12 @@ export default function App() {
     setBusy(`${PROVIDER_API_NAMES[request.provider]} yanıtı bekleniyor (bir dakikayı bulabilir)…`)
     try {
       const call = await callLlm(request)
-      setLlm(await buildLlmResult(call, request, inventory, tabId))
+      const result = await buildLlmResult(call, request, inventory, tabId)
+      // Şema hatasında da sonuç saklanır: ham yanıt rapordaki çalıştırma kaydında kalır.
+      setLlm(result)
       setSentBody(request)
       setLlmInventory(inventory)
+      if (result.schemaError) setError({ text: result.schemaError, canRequestPermission: false })
     } catch (e) {
       setError(toUiError(e))
     } finally {
@@ -153,7 +156,18 @@ export default function App() {
             `Tutarlılık testi: ${i}/${runs}. çalıştırma — ${err.status ?? '?'} hatası; ${Math.round(delayMs / 1000)} sn sonra yeniden denenecek (${attempt}/${MAX_RETRIES})…`,
           ),
         )
-        results.push({ runIndex: i, result: await buildLlmResult(call, request, inventory, tabId, retries) })
+        const result = await buildLlmResult(call, request, inventory, tabId, retries)
+        if (result.schemaError) {
+          // Şemaya uymayan yanıt istatistiğe girmez; ham yanıtıyla birlikte başarısız çalıştırma olarak kaydedilir.
+          failures.push({
+            runIndex: i,
+            timestamp: result.run.timestamp,
+            error: result.schemaError,
+            rawResponse: result.run.rawResponse,
+          })
+        } else {
+          results.push({ runIndex: i, result })
+        }
       } catch (e) {
         failures.push({ runIndex: i, timestamp: new Date().toISOString(), error: e instanceof Error ? e.message : String(e) })
       }

@@ -12,6 +12,20 @@ export default function LlmDetails({ llm }: { llm: LlmResult }) {
   const h = llm.hallucination
   return (
     <>
+      {llm.schemaError && (
+        <div className="error-box" role="alert">
+          <p>{llm.schemaError}</p>
+          <details>
+            <summary>Ham model yanıtı (rapordaki çalıştırma kaydında da saklanır)</summary>
+            <pre className="snippet">{llm.run.rawResponse.slice(0, 4000)}</pre>
+          </details>
+        </div>
+      )}
+      {llm.malformedAnswers > 0 && (
+        <p className="status error">
+          Şemaya uymayan {llm.malformedAnswers} cevap atlandı; bu sorular "cevapsız" sayıldı ve skora girmedi.
+        </p>
+      )}
       <div className="card">
         <p>
           Sağlayıcı: <code>{llm.run.provider}</code> · Model: <code>{llm.run.requestedModel}</code>

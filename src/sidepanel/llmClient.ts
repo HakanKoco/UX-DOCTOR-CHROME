@@ -2,7 +2,7 @@
 import type { GeminiDiagnostics } from '@/shared/geminiResponse'
 import type { Inventory } from '@/shared/inventory'
 import { requestParameters, type LlmRequest } from '@/shared/llmRequest'
-import { evaluateAnswers, parseLlmResponse } from '@/shared/llmValidate'
+import { LlmResponseError, evaluateAnswers, parseLlmResponse, type EvaluatedAnswers } from '@/shared/llmValidate'
 import { LLM_PORT_NAME, type LlmCallSuccess, type LlmPortRequest, type LlmPortResponse } from '@/shared/messages'
 import type { LlmResult } from '@/shared/report'
 import { retryDelayMs, shouldRetry } from '@/shared/retry'
@@ -81,7 +81,17 @@ export async function buildLlmResult(
   tabId: number | null,
   retries = 0,
 ): Promise<LlmResult> {
-  const evaluated = evaluateAnswers(parseLlmResponse(call.rawText), inventory)
+  // Yanıt şemaya hiç uymuyorsa sonuç yine üretilir (ham yanıt çalıştırma kaydında kalsın), ama cevap/bulgu olmaz.
+  let schemaError: string | undefined
+  let evaluated: EvaluatedAnswers
+  try {
+    const parsed = parseLlmResponse(call.rawText)
+    evaluated = evaluateAnswers(parsed.answers, inventory, parsed.malformed)
+  } catch (e) {
+    if (!(e instanceof LlmResponseError)) throw e
+    schemaError = e.message
+    evaluated = evaluateAnswers([], inventory)
+  }
 
   // Otomatik kontrolün ikinci aşaması: bulgu seçicileri sayfada hâlâ tek bir öğeyle eşleşiyor mu?
   const selectors = [
@@ -129,5 +139,7 @@ export async function buildLlmResult(
     hallucination: evaluated.hallucination,
     missingQuestionIds: evaluated.missingQuestionIds,
     ignoredAnswers: evaluated.ignoredAnswers,
+    malformedAnswers: evaluated.malformedAnswers,
+    ...(schemaError ? { schemaError } : {}),
   }
 }
