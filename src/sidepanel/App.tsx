@@ -1,11 +1,12 @@
+import SettingsSummary, { useSettings } from './SettingsSummary'
+
 export default function App() {
+  const settings = useSettings()
   return (
     <main>
       <h1>UX Doktor</h1>
-      <p>Sayfa analizi sonraki fazlarda eklenecek.</p>
-      <button type="button" onClick={() => chrome.runtime.openOptionsPage()}>
-        Ayarları aç
-      </button>
+      <SettingsSummary settings={settings} />
+      <p className="muted">Sayfa analizi sonraki fazlarda eklenecek.</p>
     </main>
   )
 }

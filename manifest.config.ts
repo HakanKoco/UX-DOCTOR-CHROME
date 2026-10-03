@@ -29,5 +29,10 @@ export default defineManifest({
   options_page: 'src/options/index.html',
   permissions: [
     'sidePanel',
+    'storage',
+  ],
+  // Service worker'ın Claude API isteklerinin CORS nedeniyle engellenmemesi için yalnızca bu alan adı.
+  host_permissions: [
+    'https://api.anthropic.com/*',
   ],
 })
