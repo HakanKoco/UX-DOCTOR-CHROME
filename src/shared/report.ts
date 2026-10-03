@@ -1,7 +1,7 @@
 // Rapor JSON şeması — TEK KAYNAK. Dışa aktarılan raporlar, yan panel ve skorlama bu tipleri kullanır.
 // Şema değişirse REPORT_SCHEMA_VERSION artırılır.
 
-export const REPORT_SCHEMA_VERSION = '1.0.0'
+export const REPORT_SCHEMA_VERSION = '1.1.0'
 
 export type Severity = 'Kritik' | 'Yüksek' | 'Orta' | 'Düşük'
 export const SEVERITIES: readonly Severity[] = ['Kritik', 'Yüksek', 'Orta', 'Düşük']
@@ -122,13 +122,18 @@ export interface HallucinationStats {
 export interface LlmRunRecord {
   runId: string
   timestamp: string
+  /** LLM sağlayıcısı: "claude" (Claude API) ya da "gemini" (Gemini API). */
+  provider: 'claude' | 'gemini'
   requestedModel: string
-  /** Yanıtı gerçekte üreten model (sunucu taraflı fallback olduysa farklı olabilir). */
+  /** Yanıtı gerçekte üreten model (Claude'da sunucu taraflı fallback, Gemini'de modelVersion; farklı olabilir). */
   servedModel: string
   fallbackUsed: boolean
   promptVersion: string
   /** Tutarlılığı etkileyen parametreler (gönderildiği haliyle). */
-  parameters: { maxTokens: number; effort?: string; temperature?: number; fallbacks?: string }
+  parameters: { maxTokens: number; effort?: string; temperature?: number; fallbacks?: string; thinkingLevel?: string }
+  /** 429/503 nedeniyle yapılan yeniden deneme sayısı (yalnızca tutarlılık testinde; tek analizde 0). */
+  retries: number
+  /** Claude: stop_reason; Gemini: finishReason. */
   stopReason: string | null
   durationMs: number
   usage: { inputTokens: number; outputTokens: number; cacheReadInputTokens: number | null } | null
@@ -176,6 +181,9 @@ export interface UxReport {
   deterministic: DeterministicResult
   llm: LlmResult | null
   scores: ReportScores
-  /** LLM'e gönderilen istek gövdesi (onay ekranında gösterilenle aynı). API anahtarı içermez. */
+  /**
+   * LLM'e gönderilen istek: { provider, model, body } — body onay ekranında gösterilenle aynıdır.
+   * API anahtarı içermez.
+   */
   llmRequestPreview?: unknown
 }

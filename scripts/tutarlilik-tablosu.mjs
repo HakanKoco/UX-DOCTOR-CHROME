@@ -26,7 +26,7 @@ const t = data.stats.llmTotal
 lines.push(`| **LLM toplam** | ${runs.map((r) => f(r.llmScore)).join(' | ')} | ${f(t.mean)} | ${f(t.std)} | ${f(t.min)} | ${f(t.max)} | ${f(t.range)} |`)
 
 console.log(`Sayfa: ${data.page.url}`)
-console.log(`Model: ${data.requestedModel} (yanıtlayan: ${[...new Set(runs.map((r) => r.servedModel))].join(', ')}) · Prompt: ${data.promptVersion}`)
+console.log(`Sağlayıcı: ${data.provider ?? 'claude'} · Model: ${data.requestedModel} (yanıtlayan: ${[...new Set(runs.map((r) => r.servedModel))].join(', ')}) · Prompt: ${data.promptVersion}`)
 console.log(`Çalıştırma: ${data.completedRuns}/${data.requestedRuns} · ${runs[0]?.timestamp ?? '—'} → ${runs.at(-1)?.timestamp ?? '—'}\n`)
 console.log(lines.join('\n'))
 console.log(`\nEn büyük aralık: ${f(data.stats.maxRange)} puan · Eşik (${data.stats.threshold}) aşıldı mı: ${data.stats.exceedsThreshold ? 'EVET' : 'hayır'}`)

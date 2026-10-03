@@ -2,8 +2,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import { getApiKey } from '@/shared/settings'
 
 export class MissingApiKeyError extends Error {
-  constructor() {
-    super('API anahtarı ayarlanmamış. Ayarlar sayfasından anahtarınızı girin.')
+  constructor(providerName: string) {
+    super(`${providerName} anahtarı ayarlanmamış. Ayarlar sayfasından anahtarınızı girin.`)
   }
 }
 
@@ -11,11 +11,12 @@ export class MissingApiKeyError extends Error {
  * Anahtarı her çağrıda storage'dan okuyup istemci oluşturur; anahtar bellekte global tutulmaz.
  * dangerouslyAllowBrowser: SDK bu seçenekle `anthropic-dangerous-direct-browser-access: true`
  * başlığını ekler (tarayıcıdan doğrudan erişim / CORS için gerekli başlık).
- * maxRetries 0: aynı isteğin habersiz tekrar gönderilmesini istemiyoruz; kullanıcı onayladığı kadar istek gider.
+ * maxRetries 0: SDK habersiz tekrar göndermez; yeniden deneme yalnızca tutarlılık testinde, onay ekranında
+ * açıklanan kurala göre (src/shared/retry.ts) yan panelden yapılır.
  */
 export async function createClient(): Promise<Anthropic> {
-  const apiKey = await getApiKey()
-  if (!apiKey) throw new MissingApiKeyError()
+  const apiKey = await getApiKey('claude')
+  if (!apiKey) throw new MissingApiKeyError('Claude API')
   return new Anthropic({ apiKey, dangerouslyAllowBrowser: true, maxRetries: 0, timeout: 5 * 60 * 1000 })
 }
 
@@ -31,4 +32,9 @@ export function describeApiError(error: unknown): string {
   if (error instanceof Anthropic.APIConnectionError) return 'Claude API sunucusuna bağlanılamadı.'
   if (error instanceof Anthropic.APIError) return `API hatası (${error.status ?? '?'}): ${error.message}`
   return error instanceof Error ? error.message : String(error)
+}
+
+/** Hatanın HTTP durumu (yeniden deneme kararı için); bilinmiyorsa undefined. */
+export function apiErrorStatus(error: unknown): number | undefined {
+  return error instanceof Anthropic.APIError && typeof error.status === 'number' ? error.status : undefined
 }

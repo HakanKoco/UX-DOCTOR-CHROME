@@ -1,7 +1,7 @@
 // Rapor nesnesini (src/shared/report.ts şeması) analiz sonuçlarından kurar.
 import { combineScores, scoreDeterministic, scoreLlm } from '@/scoring/score'
 import type { DeterministicRaw, PageInfo } from './contentApi'
-import type { LlmRequestBody } from './llmRequest'
+import type { LlmRequest } from './llmRequest'
 import { REPORT_SCHEMA_VERSION, type LlmResult, type PrivacyRecord, type UxReport } from './report'
 
 export interface ReportInput {
@@ -10,8 +10,8 @@ export interface ReportInput {
   privacy: PrivacyRecord
   det: DeterministicRaw
   llm: LlmResult | null
-  /** LLM'e gönderilen gövde (onay ekranında gösterilenle aynı; anahtar içermez). */
-  llmRequest: LlmRequestBody | null
+  /** LLM'e gönderilen istek (sağlayıcı, model ve onay ekranında gösterilen gövde; anahtar içermez). */
+  llmRequest: LlmRequest | null
 }
 
 export function buildReport(input: ReportInput): UxReport {

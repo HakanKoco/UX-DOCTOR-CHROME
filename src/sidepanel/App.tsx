@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react'
 import { CATEGORY_LABELS, DETERMINISTIC_CATEGORY_IDS } from '@/shared/axeMapping'
 import type { DeterministicRaw, PageInfo } from '@/shared/contentApi'
 import type { Inventory } from '@/shared/inventory'
-import { buildRequestBody, buildUserPayload, requiredBetas, type LlmRequestBody } from '@/shared/llmRequest'
+import { PROVIDER_API_NAMES, buildLlmRequest, buildUserPayload, requestTransportPreview, type LlmRequest } from '@/shared/llmRequest'
 import type { Finding, LlmResult, PrivacyRecord } from '@/shared/report'
 import { PRINCIPLE_IDS, PRINCIPLE_LABELS } from '@/shared/rubric'
 import { buildReport, slugForFile, timestampForFile } from '@/shared/reportBuilder'
+import { MAX_RETRIES, RUN_INTERVAL_MS } from '@/shared/retry'
 import { detectSensitivePage } from '@/shared/sensitivity'
 import { requestSiteAccess } from '@/shared/sitePermissions'
 import {
@@ -23,12 +24,12 @@ import ScoreSummary from './ScoreSummary'
 import SettingsSummary, { useSettings } from './SettingsSummary'
 import ValidationTools from './ValidationTools'
 import { downloadJson } from './download'
-import { buildLlmResult, callLlm } from './llmClient'
+import { buildLlmResult, callLlm, callLlmWithRetry, wait } from './llmClient'
 import { captureFindingScreenshot } from './screenshot'
 import { TabAccessError, callContent, getActiveTab } from './tabBridge'
 
 interface PendingSend {
-  body: LlmRequestBody
+  request: LlmRequest
   inventory: Inventory
   /** 1: tek analiz; >1: tutarlılık testi (aynı gövde N kez). */
   runs: number
@@ -51,8 +52,8 @@ export default function App() {
   const [det, setDet] = useState<DeterministicRaw | null>(null)
   const [privacy, setPrivacy] = useState<PrivacyRecord | null>(null)
   const [llm, setLlm] = useState<LlmResult | null>(null)
-  /** LLM'e gerçekten gönderilen gövde (rapora aynen yazılır). */
-  const [sentBody, setSentBody] = useState<LlmRequestBody | null>(null)
+  /** LLM'e gerçekten gönderilen istek (rapora aynen yazılır). */
+  const [sentBody, setSentBody] = useState<LlmRequest | null>(null)
   /** LLM analizinde kullanılan yerel envanter (halüsinasyon elle doğrulama listesi için). */
   const [llmInventory, setLlmInventory] = useState<Inventory | null>(null)
   const [consistency, setConsistency] = useState<ConsistencyExport | null>(null)
@@ -90,7 +91,7 @@ export default function App() {
     setBusy('Öğe envanteri hazırlanıyor…')
     try {
       const inventory = await callContent(tabId, 'buildInventory')
-      setPending({ body: buildRequestBody(settings.model, inventory), inventory, runs })
+      setPending({ request: buildLlmRequest(settings.model, inventory), inventory, runs })
     } catch (e) {
       setError(toUiError(e))
     } finally {
@@ -100,14 +101,14 @@ export default function App() {
 
   async function sendLlm() {
     if (!pending) return
-    const { body, inventory, runs } = pending
+    const { request, inventory, runs } = pending
     setPending(null)
-    if (runs > 1) return runConsistency(body, inventory, runs)
-    setBusy('Claude API yanıtı bekleniyor (bir dakikayı bulabilir)…')
+    if (runs > 1) return runConsistency(request, inventory, runs)
+    setBusy(`${PROVIDER_API_NAMES[request.provider]} yanıtı bekleniyor (bir dakikayı bulabilir)…`)
     try {
-      const call = await callLlm(body)
-      setLlm(await buildLlmResult(call, body, inventory, tabId))
-      setSentBody(body)
+      const call = await callLlm(request)
+      setLlm(await buildLlmResult(call, request, inventory, tabId))
+      setSentBody(request)
       setLlmInventory(inventory)
     } catch (e) {
       setError(toUiError(e))
@@ -116,29 +117,42 @@ export default function App() {
     }
   }
 
-  /** Tutarlılık testi: aynı gövde sırayla N kez gönderilir (kullanıcı tek onay ekranında N'yi görerek onayladı). */
-  async function runConsistency(body: LlmRequestBody, inventory: Inventory, runs: number) {
+  /**
+   * Tutarlılık testi: aynı gövde sırayla N kez gönderilir (kullanıcı tek onay ekranında N'yi görerek onayladı).
+   * İstek sınırına takılmamak için çalıştırmalar arasında sağlayıcıya göre beklenir (Gemini: 15 sn) ve
+   * 429/503'te üstel beklemeyle yeniden denenir (src/shared/retry.ts).
+   */
+  async function runConsistency(request: LlmRequest, inventory: Inventory, runs: number) {
     if (!page) return
     setConsistency(null)
     const results: { runIndex: number; result: LlmResult }[] = []
     const failures: ConsistencyFailure[] = []
+    const interval = RUN_INTERVAL_MS[request.provider]
     setProgress({ done: 0, total: runs, failed: 0 })
     for (let i = 1; i <= runs; i++) {
+      if (i > 1 && interval > 0) {
+        setBusy(`Tutarlılık testi: istek sınırı için ${interval / 1000} sn bekleniyor (${i}/${runs}. çalıştırmadan önce)…`)
+        await wait(interval)
+      }
       setBusy(`Tutarlılık testi: ${i}/${runs}. çalıştırma bekleniyor…`)
       try {
-        const call = await callLlm(body)
-        results.push({ runIndex: i, result: await buildLlmResult(call, body, inventory, tabId) })
+        const { call, retries } = await callLlmWithRetry(request, (attempt, delayMs, err) =>
+          setBusy(
+            `Tutarlılık testi: ${i}/${runs}. çalıştırma — ${err.status ?? '?'} hatası; ${Math.round(delayMs / 1000)} sn sonra yeniden denenecek (${attempt}/${MAX_RETRIES})…`,
+          ),
+        )
+        results.push({ runIndex: i, result: await buildLlmResult(call, request, inventory, tabId, retries) })
       } catch (e) {
         failures.push({ runIndex: i, timestamp: new Date().toISOString(), error: e instanceof Error ? e.message : String(e) })
       }
       setProgress({ done: i, total: runs, failed: failures.length })
     }
     setBusy(null)
-    setConsistency(buildConsistencyExport({ page, body, inventory, requestedRuns: runs, results, failures }))
+    setConsistency(buildConsistencyExport({ page, request, inventory, requestedRuns: runs, results, failures }))
     // İlk başarılı çalıştırma, rapor görünümü için LLM sonucu olarak da gösterilir (rapora o yazılır).
     if (results[0]) {
       setLlm(results[0].result)
-      setSentBody(body)
+      setSentBody(request)
       setLlmInventory(inventory)
     }
     if (failures.length > 0 && results.length === 0) setError({ text: failures[0].error, canRequestPermission: false })
@@ -209,7 +223,7 @@ export default function App() {
 
   const llmLocked = !!privacy?.sensitive && !privacy.consentGiven
   const llmDisabledReason = !settings?.hasApiKey
-    ? 'Önce ayarlardan API anahtarı girin.'
+    ? `Önce ayarlardan ${settings ? PROVIDER_API_NAMES[settings.provider] : 'API'} anahtarı girin.`
     : llmLocked
       ? 'Hassas sayfa: gönderim kilitli (yukarıdaki onay kutusu).'
       : null
@@ -330,10 +344,13 @@ export default function App() {
 
       {pending && (
         <ConfirmSendDialog
-          requestBody={pending.body}
-          model={pending.body.model}
+          provider={pending.request.provider}
+          requestBody={pending.request.body}
+          model={pending.request.model}
           runs={pending.runs}
-          extraHeaders={requiredBetas(pending.body).length > 0 ? { 'anthropic-beta': requiredBetas(pending.body).join(',') } : {}}
+          transport={requestTransportPreview(pending.request)}
+          runIntervalMs={RUN_INTERVAL_MS[pending.request.provider]}
+          maxRetries={MAX_RETRIES}
           readableUserPayload={buildUserPayload(pending.inventory)}
           onSend={sendLlm}
           onCancel={() => setPending(null)}

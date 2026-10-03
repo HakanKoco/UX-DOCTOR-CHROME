@@ -80,7 +80,7 @@ export default function ValidationTools(props: Props) {
             <div style={{ overflowX: 'auto' }}>
               <table className="score-table">
                 <caption className="muted" style={{ textAlign: 'left' }}>
-                  {c.completedRuns}/{c.requestedRuns} çalıştırma · model {c.requestedModel} · {c.promptVersion}
+                  {c.completedRuns}/{c.requestedRuns} çalıştırma · {c.provider} / {c.requestedModel} · {c.promptVersion}
                 </caption>
                 <thead>
                   <tr>

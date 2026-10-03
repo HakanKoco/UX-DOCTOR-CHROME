@@ -41,8 +41,10 @@ export default defineManifest({
     'http://*/*',
     'https://*/*',
   ],
-  // Service worker'ın Claude API isteklerinin CORS nedeniyle engellenmemesi için yalnızca bu alan adı.
+  // Service worker'ın LLM isteklerinin CORS nedeniyle engellenmemesi için yalnızca bu iki API alan adı
+  // (Claude API ve Gemini API). Sayfa içeriğine erişim vermez.
   host_permissions: [
     'https://api.anthropic.com/*',
+    'https://generativelanguage.googleapis.com/*',
   ],
 })

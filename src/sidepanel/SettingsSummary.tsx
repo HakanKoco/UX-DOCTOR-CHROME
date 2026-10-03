@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { getModelOption } from '@/shared/models'
+import { PROVIDER_LABELS } from '@/shared/models'
 import { getPublicSettings, type PublicSettings } from '@/shared/settings'
 
-/** Yan panelin üstünde anahtar/model durumunu gösterir; ayarlar değişince kendini günceller. */
+/** Yan panelin üstünde sağlayıcı/anahtar/model durumunu gösterir; ayarlar değişince kendini günceller. */
 export function useSettings(): PublicSettings | null {
   const [settings, setSettings] = useState<PublicSettings | null>(null)
   useEffect(() => {
@@ -22,7 +22,10 @@ export default function SettingsSummary({ settings }: { settings: PublicSettings
   return (
     <div className="row settings-summary">
       <span>
-        Model: <strong>{getModelOption(settings.model)?.id ?? settings.model}</strong>
+        Sağlayıcı: <strong>{PROVIDER_LABELS[settings.provider]}</strong>
+      </span>
+      <span>
+        Model: <strong>{settings.model}</strong>
       </span>
       <span>
         API anahtarı: <strong>{settings.hasApiKey ? 'kayıtlı' : 'yok'}</strong>

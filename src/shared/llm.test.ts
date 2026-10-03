@@ -1,12 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { FALLBACK_BETA, RESPONSE_SCHEMA, buildRequestBody, requiredBetas } from './llmRequest'
+import {
+  FALLBACK_BETA,
+  MAX_TOKENS,
+  RESPONSE_SCHEMA,
+  SYSTEM_PROMPT,
+  buildClaudeRequestBody,
+  buildGeminiRequestBody,
+  buildLlmRequest,
+  requestParameters,
+  requestTransportPreview,
+  requiredBetas,
+} from './llmRequest'
 import { LlmResponseError, evaluateAnswers, parseLlmResponse, type RawAnswer } from './llmValidate'
 import { RUBRIC } from './rubric'
 import { sampleInventory } from './testFixtures'
 
-describe('buildRequestBody', () => {
+describe('buildClaudeRequestBody', () => {
   it('Opus 5.5: effort sabit, temperature yok, sunucu yedeği açık', () => {
-    const body = buildRequestBody('claude-opus-5-5', sampleInventory())
+    const body = buildClaudeRequestBody('claude-opus-5-5', sampleInventory())
     expect(body.model).toBe('claude-opus-5-5')
     expect(body.output_config.effort).toBe('medium')
     expect(body.temperature).toBeUndefined()
@@ -15,7 +26,7 @@ describe('buildRequestBody', () => {
   })
 
   it('Haiku 4.5: temperature 0, effort ve yedek yok', () => {
-    const body = buildRequestBody('claude-haiku-4-5', sampleInventory())
+    const body = buildClaudeRequestBody('claude-haiku-4-5', sampleInventory())
     expect(body.temperature).toBe(0)
     expect(body.output_config.effort).toBeUndefined()
     expect(body.fallbacks).toBeUndefined()
@@ -23,12 +34,12 @@ describe('buildRequestBody', () => {
   })
 
   it('yapılandırılmış çıktı şeması gönderilir', () => {
-    const body = buildRequestBody('claude-sonnet-5-5', sampleInventory())
+    const body = buildClaudeRequestBody('claude-sonnet-5-5', sampleInventory())
     expect(body.output_config.format).toEqual({ type: 'json_schema', schema: RESPONSE_SCHEMA })
   })
 
   it('kullanıcı mesajındaki envanter maskelenmiştir; ekran görüntüsü yoktur', () => {
-    const body = buildRequestBody('claude-opus-5-5', sampleInventory())
+    const body = buildClaudeRequestBody('claude-opus-5-5', sampleInventory())
     const content = body.messages[0].content
     expect(content).not.toContain('12345678901')
     expect(content).not.toContain('0532 123 45 67')
@@ -42,8 +53,8 @@ describe('buildRequestBody', () => {
   })
 
   it('aynı girdiyle aynı gövdeyi üretir (tekrarlanabilirlik)', () => {
-    expect(JSON.stringify(buildRequestBody('claude-opus-5-5', sampleInventory()))).toBe(
-      JSON.stringify(buildRequestBody('claude-opus-5-5', sampleInventory())),
+    expect(JSON.stringify(buildClaudeRequestBody('claude-opus-5-5', sampleInventory()))).toBe(
+      JSON.stringify(buildClaudeRequestBody('claude-opus-5-5', sampleInventory())),
     )
   })
 
@@ -130,5 +141,69 @@ describe('evaluateAnswers — kimlik doğrulama ve halüsinasyon', () => {
     expect(r.answers[0].effectiveAnswer).toBe('evet')
     expect(r.ignoredAnswers).toBe(2)
     expect(r.missingQuestionIds).toHaveLength(RUBRIC.length - 1)
+  })
+})
+
+describe('buildGeminiRequestBody / buildLlmRequest (Gemini)', () => {
+  it('temperature 1.0, thinkingLevel MEDIUM ve aynı JSON şeması gönderilir', () => {
+    const body = buildGeminiRequestBody(sampleInventory())
+    expect(body.generationConfig.temperature).toBe(1)
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'MEDIUM' })
+    expect(body.generationConfig.maxOutputTokens).toBe(MAX_TOKENS)
+    expect(body.generationConfig.responseFormat).toEqual({ text: { mimeType: 'application/json', schema: RESPONSE_SCHEMA } })
+  })
+
+  it('Claude ile aynı sistem prompt ve kullanıcı mesajı gider', () => {
+    const inv = sampleInventory()
+    const gemini = buildGeminiRequestBody(inv)
+    const claude = buildClaudeRequestBody('claude-opus-5-5', inv)
+    expect(gemini.systemInstruction.parts[0].text).toBe(SYSTEM_PROMPT)
+    expect(gemini.contents[0].parts[0].text).toBe(claude.messages[0].content)
+  })
+
+  it('kullanıcı mesajı maskelenmiştir; görüntü yoktur', () => {
+    const body = buildGeminiRequestBody(sampleInventory())
+    expect(body.contents).toHaveLength(1)
+    expect(body.contents[0].parts).toHaveLength(1)
+    const text = body.contents[0].parts[0].text
+    expect(text).not.toContain('12345678901')
+    expect(text).not.toContain('0532 123 45 67')
+    expect(text).not.toContain('iletisim@ornek.test')
+    expect(text).toContain('[TC]')
+    expect(JSON.stringify(body)).not.toMatch(/data:image|base64,|inlineData/i)
+  })
+
+  it('model adı gövdede değil URL\'dedir; adreste ve başlık önizlemesinde anahtar yoktur', () => {
+    const request = buildLlmRequest('gemini-3.8-flash', sampleInventory())
+    expect(request.provider).toBe('gemini')
+    expect(JSON.stringify(request.body)).not.toContain('gemini-3.8-flash')
+    const t = requestTransportPreview(request)
+    expect(t.url).toBe('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent')
+    expect(t.url).not.toMatch(/[?&]key=/)
+    expect(t.keyHeader).toBe('x-goog-api-key')
+    expect(Object.keys(t.headers)).not.toContain('x-goog-api-key')
+  })
+
+  it('çalıştırma parametreleri gönderildiği haliyle çıkarılır', () => {
+    expect(requestParameters(buildLlmRequest('gemini-3.5-flash-lite', sampleInventory()))).toEqual({
+      maxTokens: MAX_TOKENS,
+      temperature: 1,
+      thinkingLevel: 'MEDIUM',
+    })
+    expect(requestParameters(buildLlmRequest('claude-haiku-4-5', sampleInventory()))).toEqual({
+      maxTokens: MAX_TOKENS,
+      temperature: 0,
+    })
+  })
+
+  it('Claude isteğinde anahtar başlığı önizlemede yer almaz', () => {
+    const t = requestTransportPreview(buildLlmRequest('claude-opus-5-5', sampleInventory()))
+    expect(t.keyHeader).toBe('x-api-key')
+    expect(t.headers['anthropic-beta']).toBe(FALLBACK_BETA)
+    expect(Object.keys(t.headers)).not.toContain('x-api-key')
+  })
+
+  it('bilinmeyen model reddedilir', () => {
+    expect(() => buildLlmRequest('gpt-x' as never, sampleInventory())).toThrow()
   })
 })

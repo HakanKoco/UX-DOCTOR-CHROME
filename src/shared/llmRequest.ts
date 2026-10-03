@@ -1,7 +1,19 @@
-// Claude API istek gövdesinin tek kaynağı. Onay ekranında gösterilen gövde ile gönderilen gövde AYNI
-// nesnedir (buildRequestBody). Yalnızca maskelenmiş envanter gider; ekran görüntüsü gönderilmez.
+// LLM istek gövdesinin tek kaynağı (Claude ve Gemini). Onay ekranında gösterilen gövde ile gönderilen gövde AYNI
+// nesnedir (buildLlmRequest). Yalnızca maskelenmiş envanter gider; ekran görüntüsü gönderilmez.
+// İki sağlayıcıya da aynı sistem prompt'u, aynı kullanıcı mesajı (rubrik + envanter) ve aynı yanıt şeması gider.
 import { PAGE_EVIDENCE_ID, toLlmInventory, type Inventory } from './inventory'
-import { FIXED_EFFORT, getModelOption, type ModelId } from './models'
+import {
+  FIXED_EFFORT,
+  GEMINI_TEMPERATURE,
+  GEMINI_THINKING_LEVEL,
+  getClaudeModelOption,
+  isClaudeModelId,
+  isGeminiModelId,
+  type ClaudeModelId,
+  type GeminiModelId,
+  type ModelId,
+  type Provider,
+} from './models'
 import { PROMPT_VERSION, PRINCIPLE_LABELS, RUBRIC } from './rubric'
 
 export const MAX_TOKENS = 16000
@@ -46,7 +58,11 @@ export function buildUserPayload(inventory: Inventory): LlmUserPayload {
   }
 }
 
-/** Yapılandırılmış çıktı şeması (output_config.format). Desteklenmeyen kısıtlar (minItems, pattern) kullanılmaz. */
+/**
+ * Yapılandırılmış çıktı şeması. Claude'da output_config.format, Gemini'de generationConfig.responseFormat.text.schema
+ * olarak gönderilir. Yalnızca iki sağlayıcının da desteklediği anahtar sözcükler kullanılır (type, properties, required,
+ * additionalProperties, enum, items); Claude'un desteklemediği kısıtlar (minItems, pattern) kullanılmaz.
+ */
 export const RESPONSE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -70,8 +86,10 @@ export const RESPONSE_SCHEMA = {
   },
 } as const
 
-export interface LlmRequestBody {
-  model: ModelId
+// --- Claude ---
+
+export interface ClaudeRequestBody {
+  model: ClaudeModelId
   max_tokens: number
   system: string
   messages: { role: 'user'; content: string }[]
@@ -88,10 +106,10 @@ export interface LlmRequestBody {
  * - Haiku 4.5: temperature 0; effort gönderilmez (desteklenmez).
  * cache_control: aynı sayfanın tekrar analizlerinde (tutarlılık testi) girdi önbellekten okunur; çıktıyı etkilemez.
  */
-export function buildRequestBody(model: ModelId, inventory: Inventory): LlmRequestBody {
-  const option = getModelOption(model)
+export function buildClaudeRequestBody(model: ClaudeModelId, inventory: Inventory): ClaudeRequestBody {
+  const option = getClaudeModelOption(model)
   if (!option) throw new Error(`Bilinmeyen model: ${model}`)
-  const body: LlmRequestBody = {
+  const body: ClaudeRequestBody = {
     model,
     max_tokens: MAX_TOKENS,
     system: SYSTEM_PROMPT,
@@ -108,6 +126,108 @@ export function buildRequestBody(model: ModelId, inventory: Inventory): LlmReque
 }
 
 /** Gövdenin gerektirdiği beta başlıkları (onay ekranında da gösterilir). */
-export function requiredBetas(body: LlmRequestBody): string[] {
+export function requiredBetas(body: ClaudeRequestBody): string[] {
   return body.fallbacks ? [FALLBACK_BETA] : []
+}
+
+// --- Gemini (generateContent) ---
+// Kaynak: https://ai.google.dev/api/generate-content ve
+// https://ai.google.dev/gemini-api/docs/generate-content/structured-output (2026-10-03'te kontrol edildi).
+// Model adı gövdede değil URL'dedir; anahtar URL'de değil x-goog-api-key başlığındadır.
+
+export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta'
+
+export interface GeminiRequestBody {
+  systemInstruction: { parts: { text: string }[] }
+  contents: { role: 'user'; parts: { text: string }[] }[]
+  generationConfig: {
+    temperature: number
+    maxOutputTokens: number
+    thinkingConfig: { thinkingLevel: typeof GEMINI_THINKING_LEVEL }
+    /**
+     * responseSchema / responseJsonSchema dokümanda "Deprecated. Use responseFormat instead." olarak işaretli.
+     * mimeType değeri, yapılandırılmış çıktı rehberindeki REST örneğiyle aynı yazılır ("application/json").
+     */
+    responseFormat: { text: { mimeType: 'application/json'; schema: typeof RESPONSE_SCHEMA } }
+  }
+}
+
+export function geminiGenerateUrl(model: GeminiModelId): string {
+  return `${GEMINI_API_BASE}/models/${model}:generateContent`
+}
+
+/**
+ * Gemini istek gövdesi:
+ * - temperature 1.0 (Google'ın Gemini 3 önerisi; bkz. models.ts GEMINI_TEMPERATURE),
+ * - thinkingLevel sabit MEDIUM (Claude'daki effort "medium" ile aynı düzey),
+ * - Claude ile aynı sistem prompt'u, aynı kullanıcı mesajı ve aynı JSON şeması.
+ */
+export function buildGeminiRequestBody(inventory: Inventory): GeminiRequestBody {
+  return {
+    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    contents: [{ role: 'user', parts: [{ text: JSON.stringify(buildUserPayload(inventory)) }] }],
+    generationConfig: {
+      temperature: GEMINI_TEMPERATURE,
+      maxOutputTokens: MAX_TOKENS,
+      thinkingConfig: { thinkingLevel: GEMINI_THINKING_LEVEL },
+      responseFormat: { text: { mimeType: 'application/json', schema: RESPONSE_SCHEMA } },
+    },
+  }
+}
+
+// --- Sağlayıcıdan bağımsız istek ---
+
+export type LlmRequest =
+  | { provider: 'claude'; model: ClaudeModelId; body: ClaudeRequestBody }
+  | { provider: 'gemini'; model: GeminiModelId; body: GeminiRequestBody }
+
+export function buildLlmRequest(model: ModelId, inventory: Inventory): LlmRequest {
+  if (isClaudeModelId(model)) return { provider: 'claude', model, body: buildClaudeRequestBody(model, inventory) }
+  if (isGeminiModelId(model)) return { provider: 'gemini', model, body: buildGeminiRequestBody(inventory) }
+  throw new Error(`Bilinmeyen model: ${String(model)}`)
+}
+
+export const PROVIDER_API_NAMES: Record<Provider, string> = { claude: 'Claude API', gemini: 'Gemini API' }
+
+/** Onay ekranında gösterilen istek hedefi ve başlıklar. API anahtarı ASLA dahil edilmez (service worker ekler). */
+export function requestTransportPreview(request: LlmRequest): {
+  url: string
+  keyHeader: string
+  headers: Record<string, string>
+} {
+  if (request.provider === 'gemini') {
+    return { url: geminiGenerateUrl(request.model), keyHeader: 'x-goog-api-key', headers: { 'content-type': 'application/json' } }
+  }
+  const betas = requiredBetas(request.body)
+  return {
+    url: 'https://api.anthropic.com/v1/messages',
+    keyHeader: 'x-api-key',
+    headers: {
+      'anthropic-dangerous-direct-browser-access': 'true',
+      ...(betas.length > 0 ? { 'anthropic-beta': betas.join(',') } : {}),
+    },
+  }
+}
+
+export interface LlmRequestParameters {
+  maxTokens: number
+  effort?: string
+  temperature?: number
+  fallbacks?: string
+  thinkingLevel?: string
+}
+
+/** Tutarlılığı etkileyen parametreler (çalıştırma kaydına gönderildiği haliyle yazılır). */
+export function requestParameters(request: LlmRequest): LlmRequestParameters {
+  if (request.provider === 'gemini') {
+    const c = request.body.generationConfig
+    return { maxTokens: c.maxOutputTokens, temperature: c.temperature, thinkingLevel: c.thinkingConfig.thinkingLevel }
+  }
+  const b = request.body
+  return {
+    maxTokens: b.max_tokens,
+    ...(b.output_config.effort ? { effort: b.output_config.effort } : {}),
+    ...(b.temperature !== undefined ? { temperature: b.temperature } : {}),
+    ...(b.fallbacks ? { fallbacks: b.fallbacks } : {}),
+  }
 }

@@ -1,6 +1,8 @@
 import { LLM_PORT_NAME, type BackgroundRequest, type LlmPortRequest, type VerifyKeyResponse } from '@/shared/messages'
+import type { Provider } from '@/shared/models'
 import { getPublicSettings } from '@/shared/settings'
 import { createClient, describeApiError } from './claudeClient'
+import { getGeminiModelInfo } from './geminiClient'
 import { runLlmCall } from './llmCall'
 
 // Araç çubuğu ikonuna tıklanınca popup yerine yan panel açılır.
@@ -8,12 +10,16 @@ chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
   .catch((error: unknown) => console.error('[UX Doktor] Yan panel davranışı ayarlanamadı:', error))
 
-async function verifyKey(): Promise<VerifyKeyResponse> {
+// Ücretsiz uç noktalar: yalnızca modeli sorgular, sayfa verisi göndermez.
+async function verifyKey(provider: Provider): Promise<VerifyKeyResponse> {
   try {
-    const { model } = await getPublicSettings()
+    const settings = await getPublicSettings()
+    if (provider === 'gemini') {
+      const info = await getGeminiModelInfo(settings.geminiModel)
+      return { ok: true, message: `Anahtar geçerli. Model erişilebilir: ${info.displayName} (${info.name}).` }
+    }
     const client = await createClient()
-    // Ücretsiz uç nokta: modeli sorgular, sayfa verisi göndermez.
-    const info = await client.models.retrieve(model)
+    const info = await client.models.retrieve(settings.claudeModel)
     return { ok: true, message: `Anahtar geçerli. Model erişilebilir: ${info.display_name} (${info.id}).` }
   } catch (error) {
     return { ok: false, message: describeApiError(error) }
@@ -25,7 +31,7 @@ chrome.runtime.onMessage.addListener((request: BackgroundRequest, sender, sendRe
   // web sayfalarındaki betiklerin mesajları reddedilir.
   if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(''))) return false
   if (request.type === 'verify-key') {
-    verifyKey().then(sendResponse)
+    verifyKey(request.provider === 'gemini' ? 'gemini' : 'claude').then(sendResponse)
     return true
   }
   return false
@@ -40,7 +46,7 @@ chrome.runtime.onConnect.addListener((port) => {
   }
   port.onMessage.addListener((message: LlmPortRequest) => {
     if (message.type !== 'run') return // "ping": yalnızca service worker'ı uyanık tutar
-    runLlmCall(message.requestId, message.body).then((response) => {
+    runLlmCall(message.requestId, message.request).then((response) => {
       try {
         port.postMessage(response)
       } catch {

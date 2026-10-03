@@ -1,16 +1,26 @@
-// Yan panelden LLM analizi: service worker'a port üzerinden gövdeyi gönderir, yanıtı doğrular.
+// Yan panelden LLM analizi: service worker'a port üzerinden isteği gönderir, yanıtı doğrular.
 import type { Inventory } from '@/shared/inventory'
-import type { LlmRequestBody } from '@/shared/llmRequest'
+import { requestParameters, type LlmRequest } from '@/shared/llmRequest'
 import { evaluateAnswers, parseLlmResponse } from '@/shared/llmValidate'
 import { LLM_PORT_NAME, type LlmCallSuccess, type LlmPortRequest, type LlmPortResponse } from '@/shared/messages'
 import type { LlmResult } from '@/shared/report'
+import { retryDelayMs, shouldRetry } from '@/shared/retry'
 import { PROMPT_VERSION } from '@/shared/rubric'
 import { callContent } from './tabBridge'
 
 const PING_INTERVAL_MS = 20_000
 
+/** Service worker'dan dönen hata; HTTP durumu biliniyorsa yeniden deneme kararı için taşınır. */
+export class LlmCallError extends Error {
+  readonly status: number | undefined
+  constructor(message: string, status?: number) {
+    super(message)
+    this.status = status
+  }
+}
+
 /** Tek bir LLM çağrısı. Onay ekranında gösterilen gövdenin aynısı gönderilir. */
-export function callLlm(body: LlmRequestBody): Promise<LlmCallSuccess> {
+export function callLlm(request: LlmRequest): Promise<LlmCallSuccess> {
   return new Promise((resolve, reject) => {
     const requestId = crypto.randomUUID()
     const port = chrome.runtime.connect({ name: LLM_PORT_NAME })
@@ -23,14 +33,38 @@ export function callLlm(body: LlmRequestBody): Promise<LlmCallSuccess> {
       if (message.type !== 'result' || message.requestId !== requestId) return
       finish()
       if (message.ok) resolve(message)
-      else reject(new Error(message.error))
+      else reject(new LlmCallError(message.error, message.status))
     })
     port.onDisconnect.addListener(() => {
       clearInterval(ping)
-      reject(new Error('Service worker bağlantısı koptu.'))
+      reject(new LlmCallError('Service worker bağlantısı koptu.'))
     })
-    port.postMessage({ type: 'run', requestId, body } satisfies LlmPortRequest)
+    port.postMessage({ type: 'run', requestId, request } satisfies LlmPortRequest)
   })
+}
+
+export function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * Tutarlılık testi için: 429/503(/529) hatalarında üstel bekleme ile yeniden dener (src/shared/retry.ts).
+ * Diğer hatalar hemen yukarı iletilir. onRetry, kullanıcıya bekleme durumunu göstermek içindir.
+ */
+export async function callLlmWithRetry(
+  request: LlmRequest,
+  onRetry: (attempt: number, delayMs: number, error: LlmCallError) => void,
+): Promise<{ call: LlmCallSuccess; retries: number }> {
+  for (let retries = 0; ; retries++) {
+    try {
+      return { call: await callLlm(request), retries }
+    } catch (e) {
+      if (!(e instanceof LlmCallError) || !shouldRetry(e.status, retries)) throw e
+      const delay = retryDelayMs(retries + 1)
+      onRetry(retries + 1, delay, e)
+      await wait(delay)
+    }
+  }
 }
 
 /**
@@ -39,9 +73,10 @@ export function callLlm(body: LlmRequestBody): Promise<LlmCallSuccess> {
  */
 export async function buildLlmResult(
   call: LlmCallSuccess,
-  body: LlmRequestBody,
+  request: LlmRequest,
   inventory: Inventory,
   tabId: number | null,
+  retries = 0,
 ): Promise<LlmResult> {
   const evaluated = evaluateAnswers(parseLlmResponse(call.rawText), inventory)
 
@@ -68,16 +103,13 @@ export async function buildLlmResult(
     run: {
       runId: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
-      requestedModel: body.model,
+      provider: request.provider,
+      requestedModel: request.model,
       servedModel: call.servedModel,
       fallbackUsed: call.fallbackUsed,
       promptVersion: PROMPT_VERSION,
-      parameters: {
-        maxTokens: body.max_tokens,
-        ...(body.output_config.effort ? { effort: body.output_config.effort } : {}),
-        ...(body.temperature !== undefined ? { temperature: body.temperature } : {}),
-        ...(body.fallbacks ? { fallbacks: body.fallbacks } : {}),
-      },
+      parameters: requestParameters(request),
+      retries,
       stopReason: call.stopReason,
       durationMs: call.durationMs,
       usage: call.usage,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PageInfo } from './contentApi'
-import { buildRequestBody } from './llmRequest'
+import { buildLlmRequest } from './llmRequest'
 import { evaluateAnswers, type RawAnswer } from './llmValidate'
 import type { LlmResult } from './report'
 import { RUBRIC } from './rubric'
@@ -18,11 +18,13 @@ function fakeResult(answers: RawAnswer[], runId: string): LlmResult {
     run: {
       runId,
       timestamp: '2026-10-03T10:00:00.000Z',
+      provider: 'claude',
       requestedModel: 'claude-opus-5-5',
       servedModel: 'claude-opus-5-5',
       fallbackUsed: false,
       promptVersion: 'norman-rubrik-v1',
       parameters: { maxTokens: 16000, effort: 'medium' },
+      retries: 0,
       stopReason: 'end_turn',
       durationMs: 1,
       usage: null,
@@ -53,7 +55,7 @@ describe('buildConsistencyExport', () => {
     ]
     const ex = buildConsistencyExport({
       page,
-      body: buildRequestBody('claude-opus-5-5', inv),
+      request: buildLlmRequest('claude-opus-5-5', inv),
       inventory: inv,
       requestedRuns: 3,
       results,
@@ -83,5 +85,33 @@ describe('buildHallucinationReview', () => {
     }
     expect(ex.items[0].element).toMatchObject({ tag: 'button', role: 'button' })
     expect(ex.droppedReferences).toEqual([{ questionId: 'V1', invalidIds: ['E99'] }])
+  })
+})
+
+describe('buildConsistencyExport — Gemini', () => {
+  it('sağlayıcı, parametreler ve bekleme kuralı kaydedilir', () => {
+    const inv = sampleInventory()
+    const result = fakeResult(allAnswers({}), 'g')
+    result.run = { ...result.run, provider: 'gemini', requestedModel: 'gemini-3.8-flash', servedModel: 'gemini-3.8-flash', retries: 2 }
+    const ex = buildConsistencyExport({
+      page,
+      request: buildLlmRequest('gemini-3.8-flash', inv),
+      inventory: inv,
+      requestedRuns: 3,
+      results: [{ runIndex: 1, result }],
+      failures: [{ runIndex: 2, timestamp: '2026-10-03T10:00:00.000Z', error: 'İstek sınırına takıldınız (429).' }],
+    })
+    expect(ex.provider).toBe('gemini')
+    expect(ex.requestedModel).toBe('gemini-3.8-flash')
+    expect(ex.parameters).toEqual({ maxTokens: 16000, temperature: 1, thinkingLevel: 'MEDIUM' })
+    expect(ex.pacing).toEqual({ runIntervalMs: 15000, maxRetries: 4 })
+    expect(ex.runs[0]).toMatchObject({ provider: 'gemini', retries: 2 })
+    expect(ex.requestBody).toHaveProperty('generationConfig')
+  })
+
+  it('halüsinasyon listesine sağlayıcı yazılır', () => {
+    const llm = fakeResult(allAnswers({ M1: 'hayir' }), 'y')
+    llm.run = { ...llm.run, provider: 'gemini' }
+    expect(buildHallucinationReview({ page, llm, inventory: sampleInventory() }).provider).toBe('gemini')
   })
 })

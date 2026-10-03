@@ -1,8 +1,10 @@
 // Yan panel / ayarlar sayfası ile service worker arasındaki mesaj sözleşmesi.
-import type { LlmRequestBody } from './llmRequest'
+import type { LlmRequest } from './llmRequest'
+import type { Provider } from './models'
 
 export interface VerifyKeyRequest {
   type: 'verify-key'
+  provider: Provider
 }
 
 export interface VerifyKeyResponse {
@@ -22,7 +24,7 @@ export function sendToBackground(request: BackgroundRequest): Promise<unknown> {
 
 export const LLM_PORT_NAME = 'llm'
 
-export type LlmPortRequest = { type: 'run'; requestId: string; body: LlmRequestBody } | { type: 'ping' }
+export type LlmPortRequest = { type: 'run'; requestId: string; request: LlmRequest } | { type: 'ping' }
 
 export interface LlmCallSuccess {
   type: 'result'
@@ -33,7 +35,7 @@ export interface LlmCallSuccess {
   fallbackUsed: boolean
   stopReason: string | null
   durationMs: number
-  usage: { inputTokens: number; outputTokens: number; cacheReadInputTokens: number | null }
+  usage: { inputTokens: number; outputTokens: number; cacheReadInputTokens: number | null } | null
 }
 
 export interface LlmCallFailure {
@@ -41,6 +43,8 @@ export interface LlmCallFailure {
   requestId: string
   ok: false
   error: string
+  /** HTTP durumu (biliniyorsa); yan panel 429/503'te yeniden deneme kararını buna göre verir. */
+  status?: number
 }
 
 export type LlmPortResponse = LlmCallSuccess | LlmCallFailure

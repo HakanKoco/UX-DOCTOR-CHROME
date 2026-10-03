@@ -14,7 +14,7 @@ export default function LlmDetails({ llm }: { llm: LlmResult }) {
     <>
       <div className="card">
         <p>
-          Model: <code>{llm.run.requestedModel}</code>
+          Sağlayıcı: <code>{llm.run.provider}</code> · Model: <code>{llm.run.requestedModel}</code>
           {llm.run.servedModel !== llm.run.requestedModel && (
             <>
               {' '}
@@ -23,6 +23,7 @@ export default function LlmDetails({ llm }: { llm: LlmResult }) {
           )}
           {llm.run.fallbackUsed && <strong> (sunucu taraflı yedek model kullanıldı)</strong>} · Prompt:{' '}
           <code>{llm.run.promptVersion}</code> · {(llm.run.durationMs / 1000).toFixed(1)} sn
+          {llm.run.retries > 0 && <> · {llm.run.retries} yeniden deneme (429/503)</>}
           {llm.run.usage && (
             <>
               {' '}

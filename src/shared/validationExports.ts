@@ -4,18 +4,22 @@ import { scoreLlm } from '@/scoring/score'
 import { DEVIATION_THRESHOLD, answerAgreement, seriesStats, type AnswerAgreement, type SeriesStats } from '@/scoring/stats'
 import type { PageInfo } from './contentApi'
 import { PAGE_EVIDENCE_ID, type Inventory } from './inventory'
-import type { LlmRequestBody } from './llmRequest'
+import { requestParameters, type LlmRequest, type LlmRequestParameters } from './llmRequest'
 import { REPORT_SCHEMA_VERSION, type HallucinationStats, type LlmResult, type NormanPrincipleId } from './report'
+import { MAX_RETRIES, RUN_INTERVAL_MS } from './retry'
 import { PRINCIPLE_IDS, PRINCIPLE_LABELS, PROMPT_VERSION, questionById } from './rubric'
 
 export interface ConsistencyRunEntry {
   runIndex: number
   runId: string
   timestamp: string
+  provider: LlmResult['run']['provider']
   requestedModel: string
   servedModel: string
   fallbackUsed: boolean
   promptVersion: string
+  /** 429/503 nedeniyle yapılan yeniden deneme sayısı. */
+  retries: number
   stopReason: string | null
   durationMs: number
   usage: LlmResult['run']['usage']
@@ -37,14 +41,19 @@ export interface ConsistencyExport {
   schemaVersion: string
   generatedAt: string
   page: { url: string; title: string }
+  provider: LlmRequest['provider']
   requestedModel: string
   promptVersion: string
+  /** Tutarlılığı etkileyen parametreler (temperature, effort/thinkingLevel, maxTokens). */
+  parameters: LlmRequestParameters
+  /** Çalıştırmalar arası bekleme ve 429/503 yeniden deneme kuralı (src/shared/retry.ts). */
+  pacing: { runIntervalMs: number; maxRetries: number }
   requestedRuns: number
   completedRuns: number
   /** Tüm çalıştırmalarda aynı envanter ve aynı istek gövdesi kullanıldı (sapma yalnızca LLM'den gelir). */
   sameRequestBodyForAllRuns: true
   inventory: { includedCount: number; candidateCount: number; truncated: boolean; limit: number }
-  requestBody: LlmRequestBody
+  requestBody: LlmRequest['body']
   runs: ConsistencyRunEntry[]
   failures: ConsistencyFailure[]
   stats: {
@@ -69,10 +78,12 @@ export function toRunEntry(result: LlmResult, runIndex: number): ConsistencyRunE
     runIndex,
     runId: result.run.runId,
     timestamp: result.run.timestamp,
+    provider: result.run.provider,
     requestedModel: result.run.requestedModel,
     servedModel: result.run.servedModel,
     fallbackUsed: result.run.fallbackUsed,
     promptVersion: result.run.promptVersion,
+    retries: result.run.retries,
     stopReason: result.run.stopReason,
     durationMs: result.run.durationMs,
     usage: result.run.usage,
@@ -86,7 +97,7 @@ export function toRunEntry(result: LlmResult, runIndex: number): ConsistencyRunE
 
 export function buildConsistencyExport(input: {
   page: PageInfo
-  body: LlmRequestBody
+  request: LlmRequest
   inventory: Inventory
   requestedRuns: number
   results: { runIndex: number; result: LlmResult }[]
@@ -104,8 +115,11 @@ export function buildConsistencyExport(input: {
     schemaVersion: REPORT_SCHEMA_VERSION,
     generatedAt: new Date().toISOString(),
     page: { url: input.page.url, title: input.page.title },
-    requestedModel: input.body.model,
+    provider: input.request.provider,
+    requestedModel: input.request.model,
     promptVersion: PROMPT_VERSION,
+    parameters: requestParameters(input.request),
+    pacing: { runIntervalMs: RUN_INTERVAL_MS[input.request.provider], maxRetries: MAX_RETRIES },
     requestedRuns: input.requestedRuns,
     completedRuns: runs.length,
     sameRequestBodyForAllRuns: true,
@@ -115,7 +129,7 @@ export function buildConsistencyExport(input: {
       truncated: input.inventory.meta.truncated,
       limit: input.inventory.meta.limit,
     },
-    requestBody: input.body,
+    requestBody: input.request.body,
     runs,
     failures: input.failures,
     stats: {
@@ -159,6 +173,7 @@ export interface HallucinationReviewExport {
   generatedAt: string
   page: { url: string; title: string }
   runId: string
+  provider: LlmResult['run']['provider']
   model: { requested: string; served: string }
   promptVersion: string
   instructions: string
@@ -183,6 +198,7 @@ export function buildHallucinationReview(input: {
     generatedAt: new Date().toISOString(),
     page: { url: input.page.url, title: input.page.title },
     runId: input.llm.run.runId,
+    provider: input.llm.run.provider,
     model: { requested: input.llm.run.requestedModel, served: input.llm.run.servedModel },
     promptVersion: input.llm.run.promptVersion,
     instructions:
