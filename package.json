@@ -4,6 +4,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "Açık sayfayı WCAG 2.2 AA ve Norman ilkelerine göre analiz eden UX tanı aracı.",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
