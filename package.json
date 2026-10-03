@@ -3,10 +3,11 @@
   "type": "module",
   "version": "1.0.0",
   "private": true,
-  "description": "A browser extension built with CRXJS.",
+  "description": "Açık sayfayı WCAG 2.2 AA ve Norman ilkelerine göre analiz eden UX tanı aracı.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
     "preview": "vite preview"
   },
   "dependencies": {
