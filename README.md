@@ -461,7 +461,7 @@ ile alt yapılandırma ya da `npm run typecheck` kullanın.
 
 | Teslim | Durum |
 |---|---|
-| GitHub repo (anlamlı commit geçmişi) | Öğrenci push eder |
+| GitHub repo (anlamlı commit geçmişi) | https://github.com/HakanKoco/UX-DOCTOR-CHROME (push: Claude) |
 | README: kurulum, skor formülü, mimari şema, bilinen sınırlamalar | Bu dosya |
 | README: doğrulama sonuçları | TODO: gerçek ölçüm (öğrenci) |
 | 3 sitenin JSON raporu (`reports/`) | TODO: gerçek ölçüm (öğrenci) |

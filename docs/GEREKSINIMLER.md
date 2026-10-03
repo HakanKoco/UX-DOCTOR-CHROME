@@ -44,7 +44,7 @@ Durum değerleri:
 | R30 | Form değerleri, klavye vuruşları, kişisel veri toplanmaz; LLM'e giden içerik maskelenir | 5 | 3 / 4 | src/shared | Tamamlandı (envanterde .value/value attribute/textarea/contenteditable okunmaz; tüm metinler maskelenir) |
 | R31 | API anahtarı koda gömülmez, repoya commit edilmez (ayarlar sayfasından girilir, chrome.storage.local) | 5 | 1 | src/options, src/shared/settings.ts | Tamamlandı (sürekli kural) |
 | R32 | Analiz edilen siteye otomatik form gönderimi / tıklama yok | 5 | 2 / 4 | src/content | Tamamlandı (sürekli kural: analiz betiği salt okunur) |
-| R33 | GitHub repo, anlamlı commit geçmişi (tek commit kabul edilmez) | 6 | Tümü | git | Sürekli kural (commit'ler küçük ve Conventional Commits; push: Öğrenci) |
+| R33 | GitHub repo, anlamlı commit geçmişi (tek commit kabul edilmez) | 6 | Tümü | git | Sürekli kural (commit'ler küçük ve Conventional Commits; push: Claude, origin/master) |
 | R34 | README: kurulum adımları | 6 | 7 | README.md | Tamamlandı |
 | R35 | README: mimari şema | 6 | 7 | README.md | Tamamlandı (Mermaid) |
 | R36 | README: doğrulama sonuçları bölümü iskeleti | 6 | 7 | README.md | Tamamlandı (değerler TODO: gerçek ölçüm) |
