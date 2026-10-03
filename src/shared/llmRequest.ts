@@ -146,9 +146,11 @@ export interface GeminiRequestBody {
     thinkingConfig: { thinkingLevel: typeof GEMINI_THINKING_LEVEL }
     /**
      * responseSchema / responseJsonSchema dokümanda "Deprecated. Use responseFormat instead." olarak işaretli.
-     * mimeType değeri, yapılandırılmış çıktı rehberindeki REST örneğiyle aynı yazılır ("application/json").
+     * mimeType: API referansındaki TextResponseFormat.MimeType enum değeri (APPLICATION_JSON). Rehberdeki REST örneğinde
+     * geçen "application/json" sunucuda 400 "Invalid value at 'generation_config.response_format.text.mime_type'" döndürür
+     * (2026-10-03'te sahte anahtarla gözlendi: gövde, anahtardan önce doğrulanıyor).
      */
-    responseFormat: { text: { mimeType: 'application/json'; schema: typeof RESPONSE_SCHEMA } }
+    responseFormat: { text: { mimeType: 'APPLICATION_JSON'; schema: typeof RESPONSE_SCHEMA } }
   }
 }
 
@@ -170,7 +172,7 @@ export function buildGeminiRequestBody(inventory: Inventory): GeminiRequestBody 
       temperature: GEMINI_TEMPERATURE,
       maxOutputTokens: MAX_TOKENS,
       thinkingConfig: { thinkingLevel: GEMINI_THINKING_LEVEL },
-      responseFormat: { text: { mimeType: 'application/json', schema: RESPONSE_SCHEMA } },
+      responseFormat: { text: { mimeType: 'APPLICATION_JSON', schema: RESPONSE_SCHEMA } },
     },
   }
 }

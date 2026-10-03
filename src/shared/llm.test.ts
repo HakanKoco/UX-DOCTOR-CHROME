@@ -150,7 +150,7 @@ describe('buildGeminiRequestBody / buildLlmRequest (Gemini)', () => {
     expect(body.generationConfig.temperature).toBe(1)
     expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'MEDIUM' })
     expect(body.generationConfig.maxOutputTokens).toBe(MAX_TOKENS)
-    expect(body.generationConfig.responseFormat).toEqual({ text: { mimeType: 'application/json', schema: RESPONSE_SCHEMA } })
+    expect(body.generationConfig.responseFormat).toEqual({ text: { mimeType: 'APPLICATION_JSON', schema: RESPONSE_SCHEMA } })
   })
 
   it('Claude ile aynı sistem prompt ve kullanıcı mesajı gider', () => {
