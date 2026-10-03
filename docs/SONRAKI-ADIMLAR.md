@@ -34,7 +34,8 @@ deterministik %20, LLM %20, skorlama %15, README/demo/rapor %10, yansıtma %10. 
    node -v            # 22.12 veya üstü olmalı
    npm install
    npm run build
-   npm test           # 132 test geçmeli
+   npm test           # 212 birim testi geçmeli
+   npm run test:browser  # 20 tarayıcı testi (yüklü Chrome gerekir)
    ```
 2. Chrome → `chrome://extensions` → **Geliştirici modu** açık → **Paketlenmemiş öğe yükle** → `dist/` klasörü.
 3. Yapboz simgesinden **UX Doktor**'u sabitle.
@@ -279,6 +280,7 @@ Teslimden önce:
 npm run build
 npm run typecheck
 npm test
+npm run test:browser
 git status                         # beklenmeyen dosya yok mu?
 git grep -n "sk-ant-api" || echo "anahtar yok"   # gerçek anahtar repoda OLMAMALI
 git grep -n "<Gemini anahtarının ilk 10 karakteri>" || echo "anahtar yok"   # Gemini kullandıysan

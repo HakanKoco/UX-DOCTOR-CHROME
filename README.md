@@ -67,9 +67,12 @@ dosyaya yazılmaz, senkronize edilmez, loglanmaz.
 
 1. Analiz etmek istediğiniz **herkese açık** sayfayı açın ve araç çubuğundaki UX Doktor simgesine **o sekmedeyken**
    tıklayın (bu, eklentiye yalnızca o sekme için geçici erişim verir).
-2. **Bu sayfayı analiz et**: deterministik analiz ve hassas sayfa tespiti çalışır; skorlar ve bulgular görünür.
+2. **Bu sayfayı analiz et**: deterministik analiz ve hassas sayfa tespiti çalışır. Panelin düzeni:
+   - en üstte iki ayrı skor kartı: **Deterministik** ve **LLM**; ağırlıklı toplam altında tek satır,
+   - **En önemli 3 sorun**: şiddet sırasıyla, her kural bir kez; kural, seçici, tek cümle öneri ve **Sayfada göster**,
+   - ayrıntılı bulgu grupları, kapalı açılır bölümler halinde ve başlıkta sayı rozetiyle.
 3. Bulgularda **Sayfada göster** ile öğe vurgulanır; **Kanıt görüntüsü al** ile kırpılmış ekran görüntüsü bulguya
-   eklenir.
+   eklenir. axe'in özgün (İngilizce) metni yalnızca **Teknik ayrıntı** bölümündedir.
 4. **LLM analizi için gönderimi hazırla**: maskelenmiş öğe envanteri çıkarılır ve gönderilecek JSON'un tamamı onay
    ekranında gösterilir. **Gönder** demeden istek atılmaz.
 5. **Raporu JSON olarak indir**: rapor tarayıcının indirme klasörüne iner (`reports/` klasörüne kopyalayın).
@@ -182,7 +185,19 @@ wcag22aa` ile çalışır. Kural adları paketteki `axe.getRules()` çıktısın
 - axe'in `incomplete` sonuçları ihlal sayılmaz ve skora girmez; **"Elle incelenmeli"** başlığıyla ayrı listelenir.
 - Her bulgunun seçicisi `querySelectorAll` ile tekilliği doğrulanmış bir CSS seçicidir. Shadow DOM ve iframe
   içindeki öğeler bilgi amaçlı listelenir ama vurgulanamaz.
-- Düzeltme önerileri Türkçedir. Kontrastta ölçülen renkler ve oran öneriye yazılır.
+- **Türkçe, öğeye özel metinler:** [`src/shared/axeTemplates.ts`](src/shared/axeTemplates.ts) tek kaynaktır.
+  - Kurulu axe-core 4.13.0'daki WCAG 2.2 AA etiketli **70 kuralın hepsinin** Türkçe başlığı vardır.
+  - 45'ten fazla kural için öğeye özel şablon vardır. Şablonlar öğenin rolünü, etiketini, maskelenmiş adını ve ölçülen
+    değerleri kullanır (kontrast oranı ve renkler, hedef boyutu, eksik ARIA rolleri/öznitelikleri). Örnek: `Akış
+    (feed) "Duyurular" (<div>) içindeki doğrudan alt öğeleri gereken rolle işaretleyin (article; …)`.
+  - Şablonu olmayan kurallarda Türkçe yedek metin kullanılır.
+  - axe'in İngilizce metni yalnızca `technicalDetail` alanında kalır.
+  - Birim testi, eklentinin çalıştırdığı her kural için önerinin boş olmadığını, Türkçe olduğunu ve axe'in İngilizce
+    metnini içermediğini denetler.
+- **Chrome çevirisi:** Çeviri, metinleri `<font style="vertical-align: inherit;">` sarmalayıcılarıyla değiştirir.
+  Seçici üretimi `<font>` öğelerini yok sayar: hedef `<font>` ise en yakın anlamlı ataya çıkılır. Çeviri açıksa
+  (`html.translated-ltr/rtl` ya da `<font>` sarmalayıcıları) panelde ve raporda (`page.translationDetected`) "seçiciler
+  kararsız olabilir" notu çıkar. Bu ölçüt sezgiseldir; resmi bir Chrome dokümanı bulunamadı.
 
 ## Yorumsal (LLM) katman
 
@@ -261,10 +276,20 @@ Model isteği güvenlik nedeniyle reddederse API isteği önerilen başka bir mo
 (`servedModel`, `fallbackUsed`) her çalıştırma kaydına yazılır. Bu, tutarlılık ölçümünde model değişimini görünür
 kılar.
 
+**Yanıtın sağlamlığı** ([`src/shared/llmValidate.ts`](src/shared/llmValidate.ts), kurgusal yanıtlarla birim testli):
+- ```json kod bloğu ve öndeki/sondaki açıklama metni temizlenir.
+- Fazladan alanlar yok sayılır, eksik alanlar boş değer alır.
+- Tek bir bozuk cevap atlanıp sayılır (`malformedAnswers`); tüm yanıtı düşürmez.
+- Yanıt hiç uymuyorsa Türkçe "Model yanıtı beklenen şemaya uymadı; tekrar deneyin" hatası çıkar. Ham yanıt yine
+  çalıştırma kaydında (tutarlılık testinde `failures[].rawResponse`) saklanır.
+- LLM bulgusunun açıklaması envanter kimliği ve öğenin Türkçe tanımıyla başlar (ör. `E2 · düğme "Randevu al"
+  (<button>) — …`). Öneri yoksa öğeye özel Türkçe yedek öneri yazılır. Türkçe olmayan model metni işaretlenir.
+
 **Halüsinasyon kontrolü (otomatik):**
 1. **Kimlik kontrolü:** envanterde olmayan bir kimliğe yapılan her atıf halüsinasyon sayılır, kanıttan düşülür ve
    sayılır. Geçerli kanıtı kalmayan "hayır" bulgu üretmez, skorda "belirsiz" sayılır. Sayfa düzeyindeki yokluklar
-   (ör. hiç canlı bölge yok) için yalnızca `SAYFA` kimliği geçerlidir.
+   (ör. hiç canlı bölge yok) için yalnızca `SAYFA` kimliği geçerlidir. Kimlik yalnızca boşluk ve büyük harf
+   açısından normalleşir (`" e3"` → `E3`). `E3.` gibi biçimler halüsinasyon sayılmaya devam eder.
 2. **Seçici kontrolü:** bulgu seçicileri sayfada yeniden aranır ve tek öğeyle eşleşip eşleşmediği raporlanır.
 
 **Service worker çağrısı:** API çağrısı service worker'dan yapılır.
@@ -463,9 +488,17 @@ panelde ve raporda **ayrı** gösterilir.
 
 ## Rapor biçimi
 
-Şemanın tek kaynağı [`src/shared/report.ts`](src/shared/report.ts) dosyasıdır (`schemaVersion: 1.1.0`).
-1.1.0 sürümünde çalıştırma kaydına `provider`, `retries` ve `parameters.thinkingLevel` eklendi; `llmRequestPreview`
-artık `{provider, model, body}` biçiminde. Raporun ana alanları:
+Şemanın tek kaynağı [`src/shared/report.ts`](src/shared/report.ts) dosyasıdır (`schemaVersion: 1.2.0`).
+- **1.1.0:** çalıştırma kaydına `provider`, `retries` ve `parameters.thinkingLevel` eklendi; `llmRequestPreview`
+  `{provider, model, body}` biçimine geçti.
+- **1.2.0:**
+  - `Finding.technicalDetail` (axe'in İngilizce metni),
+  - `page.translationDetected` / `translationReasons`,
+  - `privacy.level` (`safe` | `uncertain` | `sensitive`), `strongReasons`, `weakReasons`,
+  - `llm.malformedAnswers`, `llm.schemaError`,
+  - `scores.deterministic.penalty` (skor-v2).
+
+Raporun ana alanları:
 
 | Alan | İçerik |
 |---|---|
@@ -584,6 +617,20 @@ Kontrol iki aşamalıdır:
 - **Gemini istek sınırları bilinmiyor:** Ücretsiz katman sınırları dokümanda sayı olarak yayımlanmıyor, projeye göre
   AI Studio'da görülüyor. 15 sn bekleme ve 4 yeniden deneme bir tahmindir; sınır daha sıkıysa tutarlılık testinde bazı
   çalıştırmalar başarısız olabilir. Başarısız çalıştırmalar dışa aktarımda `failures` alanına yazılır.
+- **Gemini 401 UNAUTHENTICATED (çözülmedi, teşhis eklendi):** Öğrencinin denemesinde "Anahtarı doğrula" 401
+  döndürdü. Google'a göre 28 Mayıs 2026'dan beri AI Studio'daki yeni anahtarlar servis hesabına bağlı "auth key"
+  türündedir ([api-key](https://ai.google.dev/gemini-api/docs/api-key)). Bu anahtarların biçimi dokümanda yazmıyor.
+  Sahte değerlerle yapılan denemede `x-goog-api-key` başlığındaki `AQ.` önekli bir değer, API anahtarı değil erişim
+  belirteci gibi yorumlanıp **401 / ACCESS_TOKEN_TYPE_UNSUPPORTED** döndü. Rastgele bir değer ise 400 / API_KEY_INVALID
+  döndü. Bu yalnızca bir hipotezdir. Panelin **Teşhis bilgisi** kutusu Google'ın `status`/`reason`/`message` alanlarını,
+  uç nokta yolunu, modeli ve anahtarın yalnızca kaba biçim sınıfı ile uzunluğunu gösterir; nedeni bu bilgiyle
+  kesinleştirin.
+- **Gemini `mimeType`:** Yapılandırılmış çıktı rehberindeki REST örneği `"application/json"` yazıyor, ama sunucu bunu
+  400 ile reddediyor. Doğru değer API referansındaki enum: `APPLICATION_JSON`. Gövde, anahtardan önce doğrulandığı için
+  bu fark sahte anahtarla gözlendi ve düzeltildi.
+- **Sayfa çevirisi:** Çeviri açıkken analiz edilen sayfanın DOM'u ve `lang` değeri değişir. Seçiciler `<font>`
+  sarmalayıcılarını yok sayar, ama sonuçlar çevirisiz sayfayla birebir aynı olmayabilir. Tekrarlanabilirlik için
+  çeviriyi kapatıp yeniden analiz edin.
 - **Gemini `servedModel`:** Yanıtlayan model `modelVersion` alanından alınır. Bu alan, istenen model adından farklı
   bir sürüm adı içerebilir.
 - **Maskeleme kurallı (regex) çalışır:**
@@ -617,7 +664,8 @@ Kontrol iki aşamalıdır:
 ```bash
 npm run build       # tip kontrolü + derleme (dist/)
 npm run typecheck   # yalnızca tip kontrolü (tsc -b)
-npm test            # Vitest birim testleri
+npm test            # Vitest birim testleri (Node)
+npm run test:browser  # tarayıcı testleri (önce npm run build; yüklü Chrome gerekir)
 npm run dev         # CRXJS geliştirme sunucusu (HMR)
 ```
 
@@ -625,10 +673,26 @@ Birim testleri (`src/**/*.test.ts`):
 - maskeleme, hassas sayfa tespiti, axe eşlemesi,
 - LLM istek gövdesi (Claude ve Gemini) ve yanıt doğrulama, Gemini yanıt ayrıştırma,
 - 429/503 yeniden deneme kuralı, anahtar biçim denetimi,
-- skor formülü, tutarlılık istatistikleri, rapor ve dışa aktarım kurucuları. Testlerde gerçek API anahtarı ve
-gerçek kişisel veri kullanılmaz.
+- skor formülü, tutarlılık istatistikleri, rapor ve dışa aktarım kurucuları,
+- Türkçe kural şablonları, öncelik sıralaması, çeviri tespiti, Gemini hata teşhisi, kurgusal bozuk LLM yanıtları.
 
-Commit öncesi: `npm run build`, `npx tsc --noEmit -p tsconfig.app.json` ve `npm test` hatasız geçmelidir. Kök
+Testlerde gerçek API anahtarı ve gerçek kişisel veri kullanılmaz.
+
+**Tarayıcı testleri** (`tests/browser/`, `npm run test:browser`):
+- Yeni bağımlılık yoktur. Yüklü Chrome başsız (`--headless=new`) açılır, Node'un yerleşik `WebSocket`'i ile Chrome
+  DevTools Protokolü (CDP) üzerinden konuşulur.
+- Yalnızca yerel fixture'lar (`tests/fixtures/`) yüklenir ve derlenmiş analiz betiği (`dist/src/content/analyzer.js`)
+  enjekte edilir. Chrome yolu bulunamazsa `CHROME_PATH` ortam değişkeniyle verilir.
+- CDP yalnızca bu test aracındadır; eklentinin kendisi `chrome.debugger` kullanmaz.
+- Kapsam:
+  - `selector.test.ts`: çeviri `<font>` sarmalayıcılarında seçiciler "font" içermez ve doğru öğeyi bulur,
+  - `privacy.test.ts`: iki anonim gizlilik fixture'ında gerçek sinyal toplama,
+  - `known-errors.test.ts`: `bilinen-hatalar.html` sayfasındaki kasıtlı 7 hatanın hepsi yakalanır, 5 kontrol öğesinde
+    yanlış alarm yoktur. Liste: `tests/fixtures/beklenen.json`. Bu, Ödev 4.b için aracın kendi kendine sınamasıdır;
+    manuel karşılaştırma tablosunun yerine geçmez.
+
+Commit öncesi: `npm run build`, `npx tsc --noEmit -p tsconfig.app.json`, `npm test` ve `npm run test:browser` hatasız
+geçmelidir. Kök
 `tsconfig.json` yalnızca referans içerdiği için kökte `npx tsc --noEmit` hiçbir dosyayı denetlemez; bu yüzden `-p`
 ile alt yapılandırma ya da `npm run typecheck` kullanın.
 

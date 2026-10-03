@@ -20,27 +20,27 @@ Durum değerleri:
 | R06 | 24x24 px altı dokunma hedefi kontrolü | 2.a | 2 | src/content | Tamamlandı (target-size, açıkça etkinleştirildi) |
 | R07 | Sayfa dili tanımı kontrolü | 2.a | 2 | src/content | Tamamlandı (html-has-lang, html-lang-valid, valid-lang, html-xml-lang-mismatch) |
 | R08 | Yorumsal katman: LLM ile Norman'ın 6 ilkesi (rubrik) | 2.b | 4 | src/background, src/shared | Tamamlandı (6 ilke × 4-5 soru, yapılandırılmış JSON, puanı kod hesaplar; sağlayıcı Claude API ya da Gemini API) |
-| R09 | Her ilke/kategori için 0-100 alt skor | 2 (Skorlama) | 5 | src/scoring | Tamamlandı (src/scoring/score.ts) |
-| R10 | Ağırlıklı toplam skor | 2 (Skorlama) | 5 | src/scoring | Tamamlandı (0.6 deterministik + 0.4 LLM; ağırlıklar src/scoring/weights.ts) |
-| R11 | Skor formülü ve gerekçesi README'de | 2 (Skorlama), 6 | 7 | README.md | Tamamlandı (README: Skor formülü ve gerekçesi) |
-| R12 | Deterministik ve LLM skorları ayrı gösterilir | 2 (Skorlama) | 5 | src/sidepanel | Tamamlandı (yan panel skor kartları + JSON'da ayrı alanlar) |
-| R13 | Bulguda ilgili DOM öğesi (CSS seçici) | 2 (Bulgu) | 2 / 4 | src/content, src/shared | Tamamlandı (deterministik + LLM elementId/selector) |
+| R09 | Her ilke/kategori için 0-100 alt skor | 2 (Skorlama) | 5 | src/scoring | Tamamlandı (skor-v2: kategori alt skoru 100·e^(−D_c/25); src/scoring/score.ts) |
+| R10 | Ağırlıklı toplam skor | 2 (Skorlama) | 5 | src/scoring | Tamamlandı (deterministik: ağırlıklı ceza toplamı 100·e^(−Σα_c·D_c/25), sayfa büyüklüğünden bağımsız; toplam 0.6 deterministik + 0.4 LLM; ağırlıklar ve k src/scoring/weights.ts) |
+| R11 | Skor formülü ve gerekçesi README'de | 2 (Skorlama), 6 | 7 | README.md | Tamamlandı (README: formül, seçenek karşılaştırması, k = 25 gerekçesi, örnek hesap) |
+| R12 | Deterministik ve LLM skorları ayrı gösterilir | 2 (Skorlama) | 5 | src/sidepanel | Tamamlandı (yan panelin üstünde iki ayrı skor kartı + JSON'da ayrı alanlar) |
+| R13 | Bulguda ilgili DOM öğesi (CSS seçici) | 2 (Bulgu) | 2 / 4 | src/content, src/shared | Tamamlandı (deterministik + LLM elementId/selector; Chrome çevirisinin <font> sarmalayıcıları seçiciye girmez) |
 | R14 | Bulguda sayfada vurgulama veya ekran görüntüsü | 2 (Bulgu) | 2 / 5 | src/content | Tamamlandı (vurgulama + isteğe bağlı kırpılmış ekran görüntüsü, yalnızca yerel) |
 | R15 | Bulguda ihlal edilen kural/ilke | 2 (Bulgu) | 2 / 4 | src/shared | Tamamlandı |
 | R16 | Bulguda şiddet: Kritik / Yüksek / Orta / Düşük | 2 (Bulgu) | 2 / 4 | src/shared | Tamamlandı (LLM'de şiddet rubrikte sabit) |
-| R17 | Bulguda somut düzeltme önerisi | 2 (Bulgu) | 2 / 4 | src/shared | Tamamlandı |
-| R18 | Rapor eklenti panelinde görüntülenir | 2 (Rapor) | 5 | src/sidepanel | Tamamlandı |
+| R17 | Bulguda somut düzeltme önerisi | 2 (Bulgu) | 2 / 4 | src/shared | Tamamlandı (src/shared/axeTemplates.ts: 70 kuralın Türkçe başlığı, 45+ kurala öğeye özel şablon; LLM bulgusunda envanter kimlikli Türkçe metin) |
+| R18 | Rapor eklenti panelinde görüntülenir | 2 (Rapor) | 5 | src/sidepanel | Tamamlandı ("En önemli 3 sorun", kapalı ve sayı rozetli gruplar) |
 | R19 | Rapor JSON olarak dışa aktarılır | 2 (Rapor) | 5 | src/shared, src/sidepanel | Tamamlandı (src/shared/report.ts şeması, Blob indirme) |
 | R20 | En az 3 sitede test (sağlık, Türk e-ticaret, kamu; yalnızca herkese açık sayfalar) | 3 | — | reports/ | Öğrenci |
 | R21 | Tutarlılık testi aracı: aynı sayfayı N ≥ 3 kez analiz, ilke başına ortalama / std / min-max dışa aktarımı | 4.a | 6 | src/sidepanel, src/shared | Tamamlandı (N=3-10, ilke başına ort./std/min-max, soru uyumu, JSON; scripts/tutarlilik-tablosu.mjs; Gemini'de çalıştırmalar arası 15 sn bekleme, 429/503'te en çok 4 yeniden deneme: src/shared/retry.ts) |
 | R22 | Tutarlılık ölçümünün yapılması; sapma > 10 puansa neden ve çözüm açıklaması | 4.a | — | README.md, reports/ | Öğrenci |
 | R23 | Manuel karşılaştırma tablosu şablonu (yakalanan / kaçırılan / yanlış alarm) | 4.b | 6 | docs/ | Şablon tamamlandı: docs/manuel-karsilastirma.md (doldurma: Öğrenci) |
 | R24 | Manuel denetim (klavye + ekran okuyucu, en az 1 görev) ve tablonun doldurulması | 4.b | — | docs/ | Öğrenci |
-| R25 | Halüsinasyon kontrolü: otomatik kimlik/seçici doğrulama + elle doğrulama için dışa aktarım | 4.c | 4 / 6 | src/background, src/shared | Tamamlandı (otomatik: kimlik + seçici; elle: gercekMi boş dışa aktarım; scripts/halusinasyon-orani.mjs) |
+| R25 | Halüsinasyon kontrolü: otomatik kimlik/seçici doğrulama + elle doğrulama için dışa aktarım | 4.c | 4 / 6 | src/background, src/shared | Tamamlandı (otomatik: kimlik + seçici; elle: gercekMi boş dışa aktarım; scripts/halusinasyon-orani.mjs; bozuk/şemadışı yanıtlarda ham yanıt kaydı korunur) |
 | R26 | Halüsinasyon oranının elle doğrulanması ve raporlanması | 4.c | — | README.md | Öğrenci |
 | R27 | "Büyükanne Testi" ve "Gece 3 Acil Durum Testi" şablonları | 4.d | 6 | docs/ | Şablonlar tamamlandı: docs/buyukanne-testi.md, docs/gece-3-acil-durum-testi.md (doldurma: Öğrenci) |
 | R28 | Bu iki testin sağlık sitesinde yapılıp sonuçlarının yazılması | 4.d | — | docs/ | Öğrenci |
-| R29 | Giriş yapılmış / kişisel / sağlık verili sayfada LLM gönderim kilidi ve açık onay | 5 | 3 | src/shared, src/sidepanel | Tamamlandı (onay ve zaman damgası report.privacy alanında) |
+| R29 | Giriş yapılmış / kişisel / sağlık verili sayfada LLM gönderim kilidi ve açık onay | 5 | 3 | src/shared, src/sidepanel | Tamamlandı (üç durumlu karar: hassas değil / belirsiz / hassas; belirsiz de kilitler; onay ve zaman damgası report.privacy alanında) |
 | R30 | Form değerleri, klavye vuruşları, kişisel veri toplanmaz; LLM'e giden içerik maskelenir | 5 | 3 / 4 | src/shared | Tamamlandı (envanterde .value/value attribute/textarea/contenteditable okunmaz; tüm metinler maskelenir) |
 | R31 | API anahtarı koda gömülmez, repoya commit edilmez (ayarlar sayfasından girilir, chrome.storage.local) | 5 | 1 | src/options, src/shared/settings.ts | Tamamlandı (sürekli kural; Claude ve Gemini anahtarları ayrı alanlarda) |
 | R32 | Analiz edilen siteye otomatik form gönderimi / tıklama yok | 5 | 2 / 4 | src/content | Tamamlandı (sürekli kural: analiz betiği salt okunur) |
@@ -56,6 +56,11 @@ Durum değerleri:
 | R42 | AI günlüğü | (CLAUDE.md) | — | docs/ai-gunlugu.md | Öğrenci |
 | R43 | Kapsam: önce 5-6 deterministik kontrol + Norman ilkeleri; ek özellik doğrulamadan sonra | 8 | Tümü | — | Sürekli kural (5 çekirdek kontrol + Norman; ek özellik eklenmedi) |
 | R44 | LLM sağlayıcısı seçimi: Claude API ya da Gemini API (ücretsiz katman, Flash); ayrı anahtar alanı, aynı gizlilik/onay/doğrulama kuralları, çalıştırma kaydında sağlayıcı ve model | 2.b, 5 (CLAUDE.md) | 4 (ek) | src/background/geminiClient.ts, src/shared/llmRequest.ts, src/shared/geminiResponse.ts, src/options | Tamamlandı (gemini-3.8-flash varsayılan; temperature 1.0, thinkingLevel MEDIUM; onay ekranında ücretsiz katman veri uyarısı) |
+| R45 | Gemini hata teşhisi: HTTP durumu, Google status/reason/message, uç nokta yolu, model; anahtar asla gösterilmez; anahtar kırpma; mimeType APPLICATION_JSON | 2.b, 5 | ek | src/shared/geminiResponse.ts, src/shared/DiagnosticsDetails.tsx, src/shared/settings.ts | Tamamlandı |
+| R46 | Anahtar durum mesajı daima seçili sağlayıcıya göre | (CLAUDE.md) | ek | src/shared/settings.ts (keyStatus) | Tamamlandı |
+| R47 | Tarayıcı testleri (yeni bağımlılık yok; başsız Chrome + CDP yalnızca test aracında) | 4 (doğrulama altyapısı) | ek | tests/browser, vitest.browser.config.ts | Tamamlandı (npm run test:browser) |
+| R48 | Bilinen hatalarla dolu test sayfası ve beklenen sonuç listesi | 4.b (altyapı) | ek | tests/fixtures/bilinen-hatalar.html, tests/fixtures/beklenen.json | Tamamlandı (7 kasıtlı hata yakalanıyor, 5 kontrol öğesinde yanlış alarm yok; manuel tablo öğrencide) |
+| R49 | Sayfa çevirisi tespiti ve raporda not | (tekrarlanabilirlik) | ek | src/shared/translation.ts, src/content/selector.ts | Tamamlandı (sezgisel; resmi doküman bulunamadı) |
 ## İzin yol haritası
 
 İzinler yalnızca kullanıldıkları fazda manifest'e eklendi. Gerekçeler README "İzinler ve gerekçeleri" bölümünde.
