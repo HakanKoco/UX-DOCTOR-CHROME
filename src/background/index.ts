@@ -2,7 +2,7 @@ import { LLM_PORT_NAME, type BackgroundRequest, type LlmPortRequest, type Verify
 import { isProvider, type Provider } from '@/shared/models'
 import { getPublicSettings } from '@/shared/settings'
 import { createClient, describeApiError } from './claudeClient'
-import { getGeminiModelInfo } from './geminiClient'
+import { GeminiHttpError, getGeminiModelInfo } from './geminiClient'
 import { runLlmCall } from './llmCall'
 
 // Araç çubuğu ikonuna tıklanınca popup yerine yan panel açılır.
@@ -23,7 +23,8 @@ async function verifyKey(provider: Provider): Promise<VerifyKeyResponse> {
     const info = await client.models.retrieve(settings.claudeModel)
     return { ok: true, provider, message: `Anahtar geçerli. Model erişilebilir: ${info.display_name} (${info.id}).` }
   } catch (error) {
-    return { ok: false, provider, message: describeApiError(error) }
+    const diagnostics = error instanceof GeminiHttpError ? error.diagnostics : undefined
+    return { ok: false, provider, message: describeApiError(error), ...(diagnostics ? { diagnostics } : {}) }
   }
 }
 

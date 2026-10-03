@@ -1,4 +1,5 @@
 // Yan panel / ayarlar sayfası ile service worker arasındaki mesaj sözleşmesi.
+import type { GeminiDiagnostics } from './geminiResponse'
 import type { LlmRequest } from './llmRequest'
 import type { Provider } from './models'
 
@@ -13,6 +14,8 @@ export interface VerifyKeyResponse {
   message: string
   /** Hangi sağlayıcının anahtarının doğrulandığı (service worker geri yansıtır). */
   provider?: Provider
+  /** HTTP hatasında güvenli teşhis bilgisi (anahtar içermez). */
+  diagnostics?: GeminiDiagnostics
 }
 
 export type BackgroundRequest = VerifyKeyRequest
@@ -61,6 +64,8 @@ export interface LlmCallFailure {
   error: string
   /** HTTP durumu (biliniyorsa); yan panel 429/503'te yeniden deneme kararını buna göre verir. */
   status?: number
+  /** HTTP hatasında güvenli teşhis bilgisi (anahtar içermez). */
+  diagnostics?: GeminiDiagnostics
 }
 
 export type LlmPortResponse = LlmCallSuccess | LlmCallFailure

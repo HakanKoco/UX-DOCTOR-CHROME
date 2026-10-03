@@ -86,26 +86,95 @@ export function parseGeminiResponse(data: unknown, requestedModel: string): Gemi
   }
 }
 
+// --- Hata gövdesi ve güvenli teşhis bilgisi ---
+// Google API hata gövdesi: { error: { code, message, status, details: [{ "@type": "...ErrorInfo", reason }] } }.
+// Aşağıdaki durumlar 2026-10-03'te sahte anahtarlarla gözlendi (gerçek anahtar kullanılmadı):
+// - geçersiz anahtar (x-goog-api-key)       → 400 INVALID_ARGUMENT, reason API_KEY_INVALID
+// - "AQ." önekli değer (x-goog-api-key)     → 401 UNAUTHENTICATED, reason ACCESS_TOKEN_TYPE_UNSUPPORTED
+// - anahtarsız istek                        → 403 PERMISSION_DENIED
+// - gövdede geçersiz enum değeri            → 400 INVALID_ARGUMENT ("Invalid value at ..."; anahtardan önce denetlenir)
+
+export interface GoogleErrorInfo {
+  /** Google'ın hata durumu, ör. "UNAUTHENTICATED". */
+  status: string | null
+  /** ErrorInfo.reason, ör. "API_KEY_INVALID". */
+  reason: string | null
+  /** Google'ın hata mesajı (anahtar geçerse maskelenmiş). */
+  message: string | null
+}
+
+/** Anahtarın türü hakkında, anahtarın hiçbir karakterini açığa çıkarmayan kaba sınıf. */
+export type KeyShape = 'AIza önekli' | 'AQ. önekli' | 'diğer biçim'
+
+export interface GeminiDiagnostics extends GoogleErrorInfo {
+  httpStatus: number
+  /** İsteğin gittiği yol (alan adı ve sorgu dizesi olmadan; anahtar asla URL'de değildir). */
+  endpointPath: string
+  model: string
+  keyShape: KeyShape | null
+  keyLength: number | null
+}
+
+export function maskKey(text: string, apiKey?: string): string {
+  return apiKey ? text.split(apiKey).join('[ANAHTAR]') : text
+}
+
+export function parseGoogleError(body: unknown, apiKey?: string): GoogleErrorInfo {
+  const err = (body as { error?: { message?: unknown; status?: unknown; details?: unknown } } | null)?.error
+  const details = Array.isArray(err?.details) ? err.details : []
+  const reason = details.map((d) => (d as { reason?: unknown })?.reason).find((r): r is string => typeof r === 'string')
+  return {
+    status: typeof err?.status === 'string' ? err.status : null,
+    reason: reason ?? null,
+    message: typeof err?.message === 'string' ? maskKey(err.message, apiKey).slice(0, 300) : null,
+  }
+}
+
+export function keyShape(apiKey: string): KeyShape {
+  if (apiKey.startsWith('AIza')) return 'AIza önekli'
+  if (apiKey.startsWith('AQ.')) return 'AQ. önekli'
+  return 'diğer biçim'
+}
+
+/** Teşhis bilgisi. Anahtarın kendisi yer almaz; yalnızca kaba biçim sınıfı ve uzunluğu. */
+export function buildGeminiDiagnostics(input: {
+  httpStatus: number
+  body: unknown
+  endpointPath: string
+  model: string
+  apiKey?: string
+}): GeminiDiagnostics {
+  return {
+    httpStatus: input.httpStatus,
+    ...parseGoogleError(input.body, input.apiKey),
+    endpointPath: input.endpointPath,
+    model: input.model,
+    keyShape: input.apiKey ? keyShape(input.apiKey) : null,
+    keyLength: input.apiKey ? input.apiKey.length : null,
+  }
+}
+
 /**
  * HTTP hata yanıtını kullanıcıya gösterilecek Türkçe metne çevirir. apiKey verilirse, (olası) metin içindeki
  * anahtar maskelenir — anahtar hiçbir hata mesajına sızmaz.
  */
 export function describeGeminiHttpError(status: number, body: unknown, apiKey?: string): string {
-  const err = (body as { error?: { message?: unknown; status?: unknown; details?: unknown } } | null)?.error
-  let detail = typeof err?.message === 'string' ? err.message : ''
-  if (apiKey) detail = detail.split(apiKey).join('[ANAHTAR]')
-  const code = typeof err?.status === 'string' ? ` ${err.status}` : ''
-  const suffix = detail ? `: ${detail}` : ''
-  // Geçersiz anahtar 401/403 değil, 400 INVALID_ARGUMENT + ErrorInfo.reason "API_KEY_INVALID" olarak döner
-  // (models.get uç noktasında sahte anahtarla gözlendi).
-  const reasons = Array.isArray(err?.details) ? err.details.map((d) => (d as { reason?: unknown })?.reason) : []
-  if (reasons.includes('API_KEY_INVALID')) return `Gemini API anahtarı geçersiz (${status} API_KEY_INVALID).`
+  const g = parseGoogleError(body, apiKey)
+  const code = g.status ? ` ${g.status}` : ''
+  const suffix = g.message ? `: ${g.message}` : ''
+  if (g.reason === 'API_KEY_INVALID') {
+    return `Gemini API anahtarı geçersiz (${status} API_KEY_INVALID). Anahtarı AI Studio'dan yeniden kopyalayın.`
+  }
+  if (g.reason === 'ACCESS_TOKEN_TYPE_UNSUPPORTED') {
+    return `Anahtar, API anahtarı olarak değil erişim belirteci (access token) olarak yorumlandı ve kabul edilmedi (401 ACCESS_TOKEN_TYPE_UNSUPPORTED). AI Studio'daki "API key" sayfasından kopyaladığınız değeri kullandığınızdan emin olun.`
+  }
   switch (status) {
     case 400:
       return `İstek reddedildi (400${code})${suffix}`
     case 401:
+      return `Kimlik doğrulanamadı (401${code}). Anahtar tanınmadı${g.reason ? ` (neden: ${g.reason})` : ''}.`
     case 403:
-      return `Gemini API anahtarı geçersiz ya da bu modele erişim izni yok (${status}${code}).`
+      return `Erişim reddedildi (403${code}). Anahtar eksik ya da bu modele/API'ye erişim izni yok${g.reason ? ` (neden: ${g.reason})` : ''}.`
     case 404:
       return `Model bulunamadı (404). Ayarlardan başka bir model seçin.`
     case 429:
@@ -115,4 +184,17 @@ export function describeGeminiHttpError(status: number, body: unknown, apiKey?: 
     default:
       return `Gemini API hatası (${status}${code})${suffix}`
   }
+}
+
+/** Teşhis kutusunda gösterilecek satırlar (etiket, değer). Anahtarın karakterleri hiçbir satırda yer almaz. */
+export function diagnosticsRows(d: GeminiDiagnostics): [string, string][] {
+  return [
+    ['HTTP durumu', String(d.httpStatus)],
+    ['Google status', d.status ?? '—'],
+    ['Google reason', d.reason ?? '—'],
+    ['Google message', d.message ?? '—'],
+    ['Uç nokta yolu', d.endpointPath],
+    ['Model', d.model],
+    ['Anahtar biçimi', d.keyShape ? `${d.keyShape}, ${d.keyLength} karakter` : '—'],
+  ]
 }

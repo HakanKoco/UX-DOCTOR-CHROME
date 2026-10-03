@@ -55,7 +55,7 @@ export async function runLlmCall(requestId: string, request: LlmRequest): Promis
     return { type: 'result', requestId, ok: true, ...outcome, durationMs: Date.now() - started }
   } catch (error) {
     if (error instanceof GeminiHttpError) {
-      return { type: 'result', requestId, ok: false, error: error.message, status: error.status }
+      return { type: 'result', requestId, ok: false, error: error.message, status: error.status, diagnostics: error.diagnostics }
     }
     return { type: 'result', requestId, ok: false, error: describeApiError(error), status: apiErrorStatus(error) }
   }

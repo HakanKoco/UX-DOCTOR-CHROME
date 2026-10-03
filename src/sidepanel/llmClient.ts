@@ -1,4 +1,5 @@
 // Yan panelden LLM analizi: service worker'a port üzerinden isteği gönderir, yanıtı doğrular.
+import type { GeminiDiagnostics } from '@/shared/geminiResponse'
 import type { Inventory } from '@/shared/inventory'
 import { requestParameters, type LlmRequest } from '@/shared/llmRequest'
 import { evaluateAnswers, parseLlmResponse } from '@/shared/llmValidate'
@@ -13,9 +14,11 @@ const PING_INTERVAL_MS = 20_000
 /** Service worker'dan dönen hata; HTTP durumu biliniyorsa yeniden deneme kararı için taşınır. */
 export class LlmCallError extends Error {
   readonly status: number | undefined
-  constructor(message: string, status?: number) {
+  readonly diagnostics: GeminiDiagnostics | undefined
+  constructor(message: string, status?: number, diagnostics?: GeminiDiagnostics) {
     super(message)
     this.status = status
+    this.diagnostics = diagnostics
   }
 }
 
@@ -33,7 +36,7 @@ export function callLlm(request: LlmRequest): Promise<LlmCallSuccess> {
       if (message.type !== 'result' || message.requestId !== requestId) return
       finish()
       if (message.ok) resolve(message)
-      else reject(new LlmCallError(message.error, message.status))
+      else reject(new LlmCallError(message.error, message.status, message.diagnostics))
     })
     port.onDisconnect.addListener(() => {
       clearInterval(ping)

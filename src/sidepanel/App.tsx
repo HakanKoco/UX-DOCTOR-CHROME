@@ -15,6 +15,8 @@ import {
   type ConsistencyExport,
   type ConsistencyFailure,
 } from '@/shared/validationExports'
+import DiagnosticsDetails from '@/shared/DiagnosticsDetails'
+import type { GeminiDiagnostics } from '@/shared/geminiResponse'
 import ConfirmSendDialog from './ConfirmSendDialog'
 import FindingList, { type FindingGroup } from './FindingList'
 import LlmDetails from './LlmDetails'
@@ -24,7 +26,7 @@ import ScoreSummary from './ScoreSummary'
 import SettingsSummary, { useSettings } from './SettingsSummary'
 import ValidationTools from './ValidationTools'
 import { downloadJson } from './download'
-import { buildLlmResult, callLlm, callLlmWithRetry, wait } from './llmClient'
+import { LlmCallError, buildLlmResult, callLlm, callLlmWithRetry, wait } from './llmClient'
 import { captureFindingScreenshot } from './screenshot'
 import { TabAccessError, callContent, getActiveTab } from './tabBridge'
 
@@ -35,12 +37,13 @@ interface PendingSend {
   runs: number
 }
 
-type UiError = { text: string; canRequestPermission: boolean } | null
+type UiError = { text: string; canRequestPermission: boolean; diagnostics?: GeminiDiagnostics } | null
 
 function toUiError(e: unknown): UiError {
   return {
     text: e instanceof Error ? e.message : String(e),
     canRequestPermission: e instanceof TabAccessError && e.canRequestPermission,
+    ...(e instanceof LlmCallError && e.diagnostics ? { diagnostics: e.diagnostics } : {}),
   }
 }
 
@@ -261,6 +264,7 @@ export default function App() {
       {error && (
         <div className="error-box" role="alert">
           <p>{error.text}</p>
+          {error.diagnostics && <DiagnosticsDetails diagnostics={error.diagnostics} />}
           {error.canRequestPermission && (
             <button type="button" onClick={() => requestSiteAccess().then((ok) => { if (ok) void analyze() })}>
               Site erişim izni ver ve tekrar dene

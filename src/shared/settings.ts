@@ -56,16 +56,25 @@ export async function getPublicSettings(): Promise<PublicSettings> {
   }
 }
 
+/**
+ * Yapıştırma sırasında gelen baştaki/sondaki boşlukları, satır sonlarını, sıfır genişlikli boşlukları ve BOM'u kırpar.
+ * Anahtarın içindeki karakterlere dokunmaz.
+ */
+export function normalizeApiKey(value: string): string {
+  return value.replace(/^[\s\u200B\u200C\u200D\uFEFF]+|[\s\u200B\u200C\u200D\uFEFF]+$/g, '')
+}
+
 /** Yalnızca service worker (LLM çağrısı) kullanır. */
 export async function getApiKey(provider: Provider): Promise<string | null> {
   const field = API_KEY_FIELDS[provider]
   const stored = await chrome.storage.local.get(field)
-  const key = stored[field]
-  return typeof key === 'string' && key.length > 0 ? key : null
+  // Daha önce kırpılmadan kaydedilmiş anahtarlar için okurken de kırpılır.
+  const key = typeof stored[field] === 'string' ? normalizeApiKey(stored[field]) : ''
+  return key.length > 0 ? key : null
 }
 
 export async function saveApiKey(provider: Provider, apiKey: string): Promise<void> {
-  await chrome.storage.local.set({ [API_KEY_FIELDS[provider]]: apiKey.trim() })
+  await chrome.storage.local.set({ [API_KEY_FIELDS[provider]]: normalizeApiKey(apiKey) })
 }
 
 export async function deleteApiKey(provider: Provider): Promise<void> {
@@ -90,7 +99,7 @@ export async function saveGeminiModel(model: GeminiModelId): Promise<void> {
  * yalnızca boş olmama, makul uzunluk ve boşluk içermeme denetlenir; asıl doğrulama "Anahtarı doğrula" ile yapılır.
  */
 export function looksLikeApiKey(provider: Provider, value: string): boolean {
-  const v = value.trim()
+  const v = normalizeApiKey(value)
   if (v.length <= 20 || /\s/.test(v)) return false
   return provider === 'claude' ? v.startsWith('sk-ant-') : true
 }

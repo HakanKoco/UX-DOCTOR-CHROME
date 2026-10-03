@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import DiagnosticsDetails from '@/shared/DiagnosticsDetails'
+import type { GeminiDiagnostics } from '@/shared/geminiResponse'
 import { interpretVerifyResponse, sendToBackground } from '@/shared/messages'
 import {
   CLAUDE_MODEL_OPTIONS,
@@ -20,7 +22,7 @@ import {
 } from '@/shared/settings'
 import { hasSiteAccess, revokeSiteAccess } from '@/shared/sitePermissions'
 
-type Status = { kind: 'info' | 'ok' | 'error'; text: string } | null
+type Status = { kind: 'info' | 'ok' | 'error'; text: string; diagnostics?: GeminiDiagnostics } | null
 
 const KEY_INFO: Record<Provider, { title: string; host: string; placeholder: string; formatHint: string }> = {
   claude: {
@@ -155,7 +157,7 @@ export default function App() {
     setStatus({ kind: 'info', text: 'Doğrulanıyor…' })
     try {
       const result = interpretVerifyResponse(provider, await sendToBackground({ type: 'verify-key', provider }))
-      setStatus({ kind: result.ok ? 'ok' : 'error', text: result.message })
+      setStatus({ kind: result.ok ? 'ok' : 'error', text: result.message, diagnostics: result.diagnostics })
     } finally {
       setBusy(false)
     }
@@ -269,6 +271,7 @@ export default function App() {
       <p role="status" aria-live="polite" className={status ? `status ${status.kind}` : 'status'}>
         {status?.text}
       </p>
+      {status?.diagnostics && <DiagnosticsDetails diagnostics={status.diagnostics} />}
     </main>
   )
 }
