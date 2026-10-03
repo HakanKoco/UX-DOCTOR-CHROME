@@ -1,0 +1,69 @@
+{
+  "sayfa": "tests/fixtures/bilinen-hatalar.html",
+  "aciklama": "Kasıtlı olarak eklenen hataların listesi. Bu dosya bir ölçüm sonucu değildir; test sayfasının tasarım belgesidir. tests/browser/known-errors.test.ts deterministik katmanın bunları yakaladığını ve kontrol öğelerinde yanlış alarm vermediğini doğrular.",
+  "hatalar": [
+    {
+      "id": "H1",
+      "hata": "Alt metni olmayan görsel",
+      "kural": "image-alt",
+      "wcag": "1.1.1",
+      "kategori": "text-alternatives",
+      "secici": "#hata-gorsel"
+    },
+    {
+      "id": "H2",
+      "hata": "Etiketi olmayan metin alanı",
+      "kural": "label",
+      "wcag": "4.1.2",
+      "kategori": "form-labels",
+      "secici": "#hata-input"
+    },
+    {
+      "id": "H3",
+      "hata": "Düşük kontrastlı metin (#b5b5b5 / #ffffff)",
+      "kural": "color-contrast",
+      "wcag": "1.4.3",
+      "kategori": "contrast",
+      "secici": "#hata-kontrast"
+    },
+    {
+      "id": "H4",
+      "hata": "24×24 px altı, aralarında boşluk olmayan iki düğme (16×16 px) — birinci",
+      "kural": "target-size",
+      "wcag": "2.5.8",
+      "kategori": "target-size",
+      "secici": "#hata-kucuk-1"
+    },
+    {
+      "id": "H5",
+      "hata": "24×24 px altı, aralarında boşluk olmayan iki düğme (16×16 px) — ikinci",
+      "kural": "target-size",
+      "wcag": "2.5.8",
+      "kategori": "target-size",
+      "secici": "#hata-kucuk-2"
+    },
+    {
+      "id": "H6",
+      "hata": "Sayfa dili tanımlanmamış (<html> öğesinde lang yok)",
+      "kural": "html-has-lang",
+      "wcag": "3.1.1",
+      "kategori": "language",
+      "secici": "html"
+    },
+    {
+      "id": "H7",
+      "hata": "role=\"feed\" altında article olmayan çocuklar",
+      "kural": "aria-required-children",
+      "wcag": "1.3.1",
+      "kategori": "other-wcag",
+      "secici": "#hata-feed"
+    }
+  ],
+  "hataOlmamali": [
+    { "secici": "#kontrol-gorsel", "neden": "alt metni var" },
+    { "secici": "#kontrol-input", "neden": "görünür etiketle ilişkilendirilmiş" },
+    { "secici": "#kontrol-kontrast", "neden": "yüksek kontrast" },
+    { "secici": "#kontrol-buyuk", "neden": "44×44 px" },
+    { "secici": "#kontrol-feed", "neden": "çocukları article" }
+  ]
+}

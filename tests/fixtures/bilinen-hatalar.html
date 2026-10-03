@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- Doğrulama altyapısı (Ödev 4.b): KASITLI, bilinen erişilebilirlik hataları içeren yapay sayfa.
+     Her hatanın kuralı ve seçicisi tests/fixtures/beklenen.json dosyasında listelenir.
+     "kontrol-" ile başlayan öğeler bilerek DOĞRU yazılmıştır; bunlarda bulgu çıkarsa yanlış alarm sayılır.
+     Hata: <html> öğesinde lang özniteliği yok (html-has-lang). -->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bilinen hatalar test sayfası</title>
+    <style>
+      body { font-family: sans-serif; font-size: 16px; color: #111; background: #fff; margin: 16px; }
+      .soluk { color: #b5b5b5; background: #ffffff; }
+      .kucuk-hedefler { display: flex; gap: 0; }
+      .kucuk-hedefler button { width: 16px; height: 16px; padding: 0; margin: 0; border: 1px solid #333; background: #eee; }
+      .buyuk-hedef { min-width: 44px; min-height: 44px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Bilinen hatalar</h1>
+    </header>
+    <main>
+      <h2>Görseller</h2>
+      <!-- HATA: alt metni yok (image-alt) -->
+      <img id="hata-gorsel" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" width="40" height="40" />
+      <!-- KONTROL: alt metni var -->
+      <img id="kontrol-gorsel" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" width="40" height="40" alt="Örnek logo" />
+
+      <h2>Form</h2>
+      <!-- HATA: etiketi yok (label) -->
+      <input id="hata-input" type="text" />
+      <!-- KONTROL: görünür etiketle ilişkilendirilmiş -->
+      <label for="kontrol-input">Ad</label>
+      <input id="kontrol-input" type="text" />
+
+      <h2>Metin</h2>
+      <!-- HATA: düşük kontrast, yaklaşık 2:1 (color-contrast) -->
+      <p id="hata-kontrast" class="soluk">Lorem ipsum düşük kontrastlı metin.</p>
+      <!-- KONTROL: yüksek kontrast -->
+      <p id="kontrol-kontrast">Lorem ipsum yeterli kontrastlı metin.</p>
+
+      <h2>Dokunma hedefleri</h2>
+      <!-- HATA: 16×16 px, aralarında boşluk yok (target-size) -->
+      <div class="kucuk-hedefler">
+        <button id="hata-kucuk-1" type="button" aria-label="Önceki"></button>
+        <button id="hata-kucuk-2" type="button" aria-label="Sonraki"></button>
+      </div>
+      <!-- KONTROL: 44×44 px -->
+      <button id="kontrol-buyuk" class="buyuk-hedef" type="button">Tamam</button>
+
+      <h2>Akış</h2>
+      <!-- HATA: role="feed" altında article olmayan çocuklar (aria-required-children) -->
+      <div id="hata-feed" role="feed" aria-label="Duyurular">
+        <div>Lorem ipsum duyuru 1</div>
+        <p>Lorem ipsum duyuru 2</p>
+      </div>
+      <!-- KONTROL: geçerli akış -->
+      <div id="kontrol-feed" role="feed" aria-label="Haberler">
+        <article aria-label="Haber 1"><p>Lorem ipsum haber 1</p></article>
+        <article aria-label="Haber 2"><p>Lorem ipsum haber 2</p></article>
+      </div>
+    </main>
+  </body>
+</html>
