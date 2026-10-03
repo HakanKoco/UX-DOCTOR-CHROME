@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { DeterministicCategoryId, Finding, RubricAnswerResult, Severity } from '@/shared/report'
 import { RUBRIC } from '@/shared/rubric'
-import { combineScores, round1, scoreDeterministic, scoreLlm, weightedAverage } from './score'
-import { DETERMINISTIC_CATEGORY_WEIGHTS, LAYER_WEIGHTS, PRINCIPLE_WEIGHTS } from './weights'
+import { combineScores, round1, rulePenalty, saturationScore, scoreDeterministic, scoreLlm, weightedAverage } from './score'
+import { DETERMINISTIC_CATEGORY_WEIGHTS, LAYER_WEIGHTS, PRINCIPLE_WEIGHTS, SATURATION_K, SEVERITY_WEIGHTS } from './weights'
 
-function detFinding(category: DeterministicCategoryId, severity: Severity): Finding {
+function detFinding(category: DeterministicCategoryId, severity: Severity, ruleId = 'r'): Finding {
   return {
     id: 'x',
     source: 'deterministic',
     selector: 'p',
     rule: 'WCAG',
-    ruleId: 'r',
+    ruleId,
     category,
     severity,
     description: '',
@@ -61,32 +61,92 @@ describe('weightedAverage', () => {
   })
 })
 
-describe('scoreDeterministic', () => {
-  it('S = 100 × P / (P + Σ şiddet ağırlığı)', () => {
-    // contrast: 9 geçen, 1 Yüksek (3) ihlal → 100 × 9 / 12 = 75
-    const r = scoreDeterministic([detFinding('contrast', 'Yüksek')], { ...zeroPasses, contrast: 9 })
-    const c = r.categories.find((x) => x.id === 'contrast')!
-    expect(c.score).toBe(75)
-    expect(c.detail).toEqual({ passedNodes: 9, violationNodes: 1, weightedViolations: 3 })
+describe('scoreDeterministic (skor-v2: şiddet ağırlıklı doygunluk eğrisi, k = 25)', () => {
+  const many = (category: DeterministicCategoryId, severity: Severity, ruleId: string, n: number) =>
+    Array.from({ length: n }, () => detFinding(category, severity, ruleId))
+  const samsun = () => many('target-size', 'Yüksek', 'target-size', 5)
+  const passes = (scale: number) => ({
+    contrast: 300 * scale,
+    'text-alternatives': 40 * scale,
+    'form-labels': 10 * scale,
+    'target-size': 200 * scale,
+    language: 1,
+    'other-wcag': 1500 * scale,
   })
-  it('öğesi olmayan kategori null olur ve toplamdan çıkar', () => {
+
+  it('(a) ihlalsiz sayfa = 100', () => {
+    expect(scoreDeterministic([], passes(1)).score).toBe(100)
+  })
+
+  it('(b) 5 Yüksek dokunma hedefi ihlali belirgin biçimde düşük (samsun.edu.tr gözlemi: eski formülde 99.0)', () => {
+    const r = scoreDeterministic(samsun(), passes(1))
+    // p = 3 · (1 + log₂5) = 9.966; α(target-size) = 6 · 0.1 = 0.6 → D = 5.98 → 100 · e^(−5.98/25) = 78.7
+    expect(r.score).toBe(78.7)
+    expect(r.score!).toBeLessThan(85)
+    const ts = r.categories.find((c) => c.id === 'target-size')!
+    expect(ts.score).toBe(67.1)
+    expect(ts.detail).toMatchObject({ violationNodes: 5, violatedRules: 1, penalty: 9.97, multiplier: 0.6 })
+  })
+
+  it('(c) aynı ihlaller 10 kat büyük sayfada aynı skoru verir (sayfa büyüklüğünden bağımsız)', () => {
+    expect(scoreDeterministic(samsun(), passes(10)).score).toBe(scoreDeterministic(samsun(), passes(1)).score)
+    expect(scoreDeterministic(samsun(), passes(1000)).score).toBe(78.7)
+  })
+
+  it('(d) çok sayıda Kritik ihlalde bile 0-100 aralığında kalır; ihlal arttıkça skor azalır', () => {
+    const huge = [
+      ...many('text-alternatives', 'Kritik', 'image-alt', 1000),
+      ...many('form-labels', 'Kritik', 'label', 1000),
+      ...many('other-wcag', 'Kritik', 'button-name', 1000),
+      ...many('contrast', 'Yüksek', 'color-contrast', 1000),
+    ]
+    const r = scoreDeterministic(huge, passes(1))
+    expect(r.score!).toBeGreaterThanOrEqual(0)
+    expect(r.score!).toBeLessThan(1)
+    for (const c of r.categories) if (c.score !== null) expect(c.score).toBeGreaterThanOrEqual(0)
+    const s1 = scoreDeterministic(many('contrast', 'Orta', 'color-contrast', 1), passes(1)).score!
+    const s2 = scoreDeterministic(many('contrast', 'Orta', 'color-contrast', 4), passes(1)).score!
+    const s3 = scoreDeterministic([...many('contrast', 'Orta', 'color-contrast', 4), ...many('contrast', 'Kritik', 'link-in-text-block', 1)], passes(1)).score!
+    expect(s1).toBeGreaterThan(s2)
+    expect(s2).toBeGreaterThan(s3)
+    expect(s1).toBeLessThanOrEqual(100)
+  })
+
+  it('aynı kuralın tekrarı log₂ ile sönümlenir: 5 farklı Yüksek kural, aynı kuralda 5 öğeden ağırdır', () => {
+    const sameRule = scoreDeterministic(many('other-wcag', 'Yüksek', 'r1', 5), passes(1)).score!
+    const fiveRules = scoreDeterministic(
+      ['r1', 'r2', 'r3', 'r4', 'r5'].map((id) => detFinding('other-wcag', 'Yüksek', id)),
+      passes(1),
+    ).score!
+    expect(fiveRules).toBeLessThan(sameRule)
+  })
+
+  it('kural cezası kuralın en yüksek şiddetiyle hesaplanır', () => {
+    expect(rulePenalty(SEVERITY_WEIGHTS.Kritik, 1)).toBe(4)
+    expect(rulePenalty(3, 4)).toBe(9)
+    expect(rulePenalty(3, 0)).toBe(0)
+    const mixed = scoreDeterministic([detFinding('contrast', 'Düşük', 'c'), detFinding('contrast', 'Kritik', 'c')], passes(1))
+    expect(mixed.categories.find((c) => c.id === 'contrast')!.detail.penalty).toBe(round1(4 * 2))
+  })
+
+  it('kategori ağırlığı ceza çarpanıdır (ortalama değil): aynı ihlal kontrastta hedef boyutundan ağır basar', () => {
+    const inContrast = scoreDeterministic([detFinding('contrast', 'Yüksek', 'x')], passes(1)).score!
+    const inTarget = scoreDeterministic([detFinding('target-size', 'Yüksek', 'x')], passes(1)).score!
+    expect(inContrast).toBeLessThan(inTarget)
+    expect(saturationScore(0)).toBe(100)
+    expect(saturationScore(SATURATION_K)).toBe(36.8)
+  })
+
+  it('öğesi olmayan kategori null olur ve toplama katkı vermez', () => {
     const r = scoreDeterministic([], { ...zeroPasses, contrast: 10 })
     expect(r.categories.find((x) => x.id === 'language')!.score).toBeNull()
     expect(r.score).toBe(100)
+    expect(scoreDeterministic([], zeroPasses).score).toBeNull()
   })
-  it('geçen öğe yokken ihlal varsa kategori 0 olur', () => {
-    const r = scoreDeterministic([detFinding('language', 'Yüksek')], zeroPasses)
-    expect(r.categories.find((x) => x.id === 'language')!.score).toBe(0)
-  })
-  it('toplam, kategori ağırlıklarıyla hesaplanır', () => {
-    // contrast 50 (ağırlık .25), form-labels 100 (ağırlık .2) → (12.5 + 20) / .45 = 72.2
-    const r = scoreDeterministic([detFinding('contrast', 'Kritik')], { ...zeroPasses, contrast: 4, 'form-labels': 5 })
-    expect(r.score).toBe(round1((50 * 0.25 + 100 * 0.2) / 0.45))
-  })
+
   it('LLM bulguları deterministik skoru etkilemez', () => {
-    const llmFinding = { ...detFinding('contrast', 'Kritik'), source: 'llm' as const }
-    const r = scoreDeterministic([llmFinding], { ...zeroPasses, contrast: 4 })
-    expect(r.categories.find((x) => x.id === 'contrast')!.score).toBe(100)
+    const llmFinding = { ...detFinding('contrast', 'Kritik', 'x'), source: 'llm' as const }
+    expect(scoreDeterministic([llmFinding], { ...zeroPasses, contrast: 4 }).score).toBe(100)
   })
 })
 

@@ -61,9 +61,9 @@ export default function ScoreSummary({ scores }: { scores: ReportScores }) {
       <details>
         <summary>Alt skorlar ve hesap ayrıntısı</summary>
         <LayerTable
-          title="Deterministik: S = 100 × geçen / (geçen + Σ şiddet ağırlığı)"
+          title={`Deterministik: kural cezası w·(1+log₂ n); alt skor 100·e^(−D_c/25); toplam 100·e^(−Σ α_c·D_c/25), α_c = 6 × ağırlık. Toplam ceza D = ${scores.deterministic.penalty ?? '—'}`}
           layer={scores.deterministic}
-          detailLabel={(d) => `${d.passedNodes} geçen, ${d.violationNodes} ihlal (ağırlıklı ${d.weightedViolations})`}
+          detailLabel={(d) => `${d.violatedRules} kural / ${d.violationNodes} öğe ihlal, ceza ${d.penalty} × ${d.multiplier} (${d.passedNodes} geçen öğe skora girmez)`}
         />
         {scores.llm && (
           <LayerTable

@@ -79,6 +79,8 @@ export interface LayerScore {
   /** 0-100; hiçbir alt skor hesaplanamadıysa null. */
   score: number | null
   categories: CategoryScore[]
+  /** Yalnızca deterministik katmanda: toplam ağırlıklı ceza D (S = 100 · e^(−D/k)). */
+  penalty?: number
 }
 
 export interface PrivacyRecord {

@@ -332,23 +332,70 @@ kılar.
 ## Skor formülü ve gerekçesi
 
 Tüm ağırlıklar tek dosyadadır: [`src/scoring/weights.ts`](src/scoring/weights.ts). Formül:
-[`src/scoring/score.ts`](src/scoring/score.ts) (birim testli). Sürüm: `skor-v1`.
+[`src/scoring/score.ts`](src/scoring/score.ts) (birim testli). Sürüm: `skor-v2`.
 
 **Şiddet ağırlıkları:** w(Kritik) = 4, w(Yüksek) = 3, w(Orta) = 2, w(Düşük) = 1.
 
-**1. Deterministik kategori skoru** (her kategori c için):
+**1. Deterministik skor (skor-v2: şiddet ağırlıklı doygunluk eğrisi)**
 
 ```
-S_c = 100 × P_c / (P_c + Σ_i w(şiddet_i))
+Kural cezası       p_r = w(şiddet_r) × (1 + log₂ n_r)          n_r: kuralı ihlal eden öğe sayısı
+Kategori cezası    D_c = Σ p_r  (kategorideki ihlal edilen kurallar)
+Kategori alt skoru S_c = 100 × e^(−D_c / k)
+Toplam ceza        D   = Σ_c α_c × D_c ,   α_c = 6 × ağırlık_c  (ağırlıkların ortalaması 1)
+Deterministik skor S   = 100 × e^(−D / k) ,   k = 25
 ```
 
-P_c: kategorideki kuralları geçen öğe sayısı (axe `passes`). Toplam, kategorideki her ihlalli öğenin şiddet
-ağırlığı üzerinden alınır. Kategoride hiç öğe yoksa skor **uygulanamaz** (null) olur ve toplamdan çıkar.
-Örnek: kontrastı geçen 9 öğe ve 1 Yüksek ihlal → 100 × 9 / (9 + 3) = 75.
+Bir kuralın şiddeti, o kuralı ihlal eden öğelerin en yüksek şiddetidir. Kategoride hiç denetlenen öğe yoksa (geçen
+yok, ihlal yok) kategori **uygulanamaz** (null) olur ve toplama katkı vermez. axe'in `incomplete` sonuçları kesin
+olmadığı için skora girmez.
 
-*Gerekçe:* İhlal sayısını tek başına saymak büyük sayfaları cezalandırır. Bu oran, ihlalleri sayfanın büyüklüğüne
-göre değerlendirir. Ağırlık sayesinde kritik bir ihlal, düşük bir ihlalden dört kat fazla düşürür. axe'in
-`incomplete` sonuçları kesin olmadığı için skora girmez.
+*Neden değişti (skor-v1 → skor-v2):* Eski formül `S_c = 100 × geçen / (geçen + Σ w)` idi ve kategori skorlarının
+ağırlıklı **ortalaması** alınıyordu. samsun.edu.tr'de gözlenen durum: 5 Yüksek dokunma hedefi ihlali varken skor
+99.0 çıktı. Bunun iki nedeni vardı:
+1. Geçen öğe sayısı (büyük sayfada binlerce) ihlalleri eritiyordu; sayfa büyüdükçe skor şişiyordu.
+2. İhlal yalnızca ağırlığı 0,10 olan bir kategorideyken, diğer kategoriler 100 olduğu için ortalama yine ~99'da
+   kalıyordu.
+
+*Değerlendirilen seçenekler:*
+
+| Seçenek | S1: 5 Yüksek, tek kural | S1, 10 kat büyük sayfa | 3 Kritik + 2 Yüksek kural, çok öğe | Karar |
+|---|---|---|---|---|
+| A. Kural başına ceza + üst sınır: `100 − Σ min(2W, W(1+log₂n))` | 76 | 76 | 0 | Kötü sayfalar 0'a yığılır, birbirinden ayrılamaz |
+| B. İhlalli öğe oranı | ~96 | ~99.6 | sayfaya bağlı | Sayfa büyüklüğüne bağlı kalır; asıl sorunu çözmez |
+| **C. Doygunluk eğrisi (seçildi)** + ağırlıklı ceza toplamı | **78.7** | **78.7** | **~2** | 0-100 dışına çıkamaz; kötü sayfalar arasında da ayrım kalır |
+
+Toplama yöntemi de karşılaştırıldı. C ile kategori ortalaması alınsaydı S1 için skor **96.7** olurdu, yani sorun
+sürerdi. Ağırlıklı ceza toplamıyla **78.7** olur.
+
+*k = 25 seçiminin gerekçesi:* k, "ne kadar ceza skoru yarıya indirir" sorusunun ayarıdır (D = k·ln2 ≈ 17,3'te
+skor 50). Hedeflenen davranış:
+
+| Durum | D | Skor |
+|---|---|---|
+| İhlal yok | 0 | 100 |
+| Tek öğede tek Düşük ihlal | 1 | 96.1 |
+| Tek öğede tek Kritik ihlal | 4 | 85.2 |
+| Aynı Yüksek kuralda 5 öğe, kontrast kategorisinde (α = 1,5) | 14.9 | 55.0 |
+| Aynı Yüksek kuralda 5 öğe, dokunma hedefinde (α = 0,6) — samsun örneği | 5.98 | 78.7 |
+| D = k | 25 | 36.8 |
+| 3 Kritik + 2 Yüksek kural, her biri 10-20 öğe | ~95 | ~2 |
+
+k = 10 olsaydı tek bir Kritik ihlal skoru 67'ye indirirdi ve orta düzeyde sorunlu sayfalar hızla 0'a yığılırdı.
+k = 50 olsaydı samsun örneği 88.7 çıkar, ihlaller yine görünmez kalırdı. 25, tek ve tekil bir sorunu "iyi ama
+kusurlu" (80-95), birkaç kuralı "orta" (40-80), çok kurallı sayfaları "kötü" (<20) bölgeye yerleştiren değerdir.
+Bu bir uzman yargısıdır; ampirik olarak kalibre edilmemiştir (bkz. Bilinen sınırlamalar).
+
+*Örnek hesap (samsun.edu.tr gözlemi):*
+1. `target-size` kuralında 5 öğe, şiddet Yüksek (w = 3) → p = 3 × (1 + log₂5) = 3 × 3,32 = 9,97.
+2. Dokunma hedefi kategorisi: S_c = 100 × e^(−9,97/25) = **67.1**.
+3. Toplam: α = 6 × 0,10 = 0,6 → D = 5,98 → S = 100 × e^(−5,98/25) = **78.7**.
+4. Geçen öğe sayısı 10 ya da 1000 katına çıksa da skor 78.7 kalır.
+
+*Diğer gerekçeler:*
+- log₂ sönümleme: aynı hatanın 50 kopyası (ör. şablondaki tek bir eksik alt metin), 50 farklı hata kadar ağır
+  sayılmaz. Ama 5 farklı kural, aynı kuralda 5 öğeden ağır basar (birim testli).
+- Geçen öğe sayısı yalnızca kategorinin uygulanabilir olup olmadığını belirler; skora girmez.
 
 **2. Norman ilke skoru** (her ilke p için, LLM cevaplarından **kod** hesaplar):
 
@@ -363,8 +410,11 @@ düşen "hayır"lar da girmez. İlkede hiç evet/hayır yoksa skor uygulanamaz o
 kullanılınca skor denetlenebilir hale gelir: her puan farkı belirli bir sorunun cevabına kadar izlenebilir.
 Statik analizle karar verilemeyen durumlar "belirsiz" olarak skoru yapay şekilde düşürmez.
 
-**3. Katman skorları:** alt skorların ağırlıklı ortalaması. Uygulanamayan alt skorlar çıkarılır, kalan ağırlıklar
-yeniden ölçeklenir.
+**3. Katman skorları:**
+- **LLM:** ilke alt skorlarının ağırlıklı ortalaması. Uygulanamayan ilkeler çıkarılır, kalan ağırlıklar yeniden
+  ölçeklenir.
+- **Deterministik:** ortalama değil, yukarıdaki ağırlıklı ceza toplamı. Kategori ağırlığı cezanın çarpanıdır
+  (α_c = 6 × ağırlık).
 
 | Deterministik kategori | Ağırlık | | Norman ilkesi | Ağırlık |
 |---|---|---|---|---|
@@ -525,7 +575,7 @@ Kontrol iki aşamalıdır:
   durumda vurgulama kullanılabilir.
 - **activeTab ve yan panel:** Resmi doküman, simgeye tıklanınca açılan yan panelin activeTab verip vermediğini
   belirtmiyor. Verilmezse panel bunu söyler ve isteğe bağlı site izni sunar.
-- **Kural ağırlıkları** (kategori ve katman ağırlıkları) uzman yargısıdır; ampirik olarak kalibre edilmemiştir.
+- **Kural ağırlıkları** (şiddet, kategori ve katman ağırlıkları) ve doygunluk sabiti **k = 25** uzman yargısıdır; ampirik olarak kalibre edilmemiştir.
 
 ---
 

@@ -14,6 +14,7 @@ import {
   FORMULA_VERSION,
   LAYER_WEIGHTS,
   PRINCIPLE_WEIGHTS,
+  SATURATION_K,
   SEVERITY_WEIGHTS,
 } from './weights'
 
@@ -32,30 +33,69 @@ export function weightedAverage(items: readonly { score: number | null; weight: 
   return round1(valid.reduce((s, i) => s + i.score * i.weight, 0) / totalWeight)
 }
 
+/** Bir kuralın cezası: w(şiddet) · (1 + log₂ n). n: aynı kuralı ihlal eden öğe sayısı (tekrar sönümlenir). */
+export function rulePenalty(severityWeight: number, nodeCount: number): number {
+  return nodeCount <= 0 ? 0 : severityWeight * (1 + Math.log2(nodeCount))
+}
+
+/** Doygunluk eğrisi: 100 · e^(−D / k). D = 0 → 100; D büyüdükçe 0'a yaklaşır, 0-100 dışına çıkamaz. */
+export function saturationScore(penalty: number, k = SATURATION_K): number {
+  return round1(100 * Math.exp(-Math.max(0, penalty) / k))
+}
+
+/** Kategori cezası: kategorideki her ihlal edilen kural için rulePenalty toplamı (kuralın en yüksek şiddetiyle). */
+export function categoryPenalty(findings: readonly Finding[]): { penalty: number; rules: number } {
+  const byRule = new Map<string, { n: number; w: number }>()
+  for (const f of findings) {
+    const r = byRule.get(f.ruleId) ?? { n: 0, w: 0 }
+    r.n++
+    r.w = Math.max(r.w, SEVERITY_WEIGHTS[f.severity])
+    byRule.set(f.ruleId, r)
+  }
+  let penalty = 0
+  for (const { n, w } of byRule.values()) penalty += rulePenalty(w, n)
+  return { penalty, rules: byRule.size }
+}
+
 /**
- * Deterministik kategori skoru:
- *   S_c = 100 × P / (P + Σ w(şiddet_i))
- * P: kategorideki kuralları geçen öğe sayısı (axe "passes"), toplam: kategorideki her ihlalli öğe için
- * şiddet ağırlığı. Hiç öğe yoksa (P = 0 ve ihlal yok) kategori uygulanamaz → null.
+ * Deterministik skor (skor-v2; README "Skor formülü"):
+ *   Kural cezası      p_r = w(şiddet_r) · (1 + log₂ n_r)
+ *   Kategori cezası   D_c = Σ_r∈c p_r            Kategori alt skoru  S_c = 100 · e^(−D_c / k)
+ *   Toplam ceza       D   = Σ_c α_c · D_c,  α_c = 6 · ağırlık_c   Toplam  S = 100 · e^(−D / k),  k = 25
+ * Geçen öğe sayısı skora girmez: skor sayfa büyüklüğünden bağımsızdır. Kategoride hiç denetlenen öğe yoksa
+ * (geçen = 0 ve ihlal yok) kategori uygulanamaz (null) ve toplama katkı vermez.
  */
 export function scoreDeterministic(
   findings: readonly Finding[],
   passesByCategory: Record<DeterministicCategoryId, number>,
 ): LayerScore {
+  let totalPenalty = 0
+  let applicable = 0
   const categories: CategoryScore[] = DETERMINISTIC_CATEGORY_IDS.map((id) => {
     const inCategory = findings.filter((f) => f.source === 'deterministic' && f.category === id)
     const passed = passesByCategory[id] ?? 0
-    const weightedViolations = inCategory.reduce((s, f) => s + SEVERITY_WEIGHTS[f.severity], 0)
-    const denominator = passed + weightedViolations
+    const { penalty, rules } = categoryPenalty(inCategory)
+    const multiplier = DETERMINISTIC_CATEGORY_IDS.length * DETERMINISTIC_CATEGORY_WEIGHTS[id]
+    const isApplicable = passed > 0 || inCategory.length > 0
+    if (isApplicable) {
+      applicable++
+      totalPenalty += multiplier * penalty
+    }
     return {
       id,
       label: CATEGORY_LABELS[id],
-      score: denominator === 0 ? null : round1((100 * passed) / denominator),
+      score: isApplicable ? saturationScore(penalty) : null,
       weight: DETERMINISTIC_CATEGORY_WEIGHTS[id],
-      detail: { passedNodes: passed, violationNodes: inCategory.length, weightedViolations },
+      detail: {
+        passedNodes: passed,
+        violationNodes: inCategory.length,
+        violatedRules: rules,
+        penalty: Math.round(penalty * 100) / 100,
+        multiplier: Math.round(multiplier * 100) / 100,
+      },
     }
   })
-  return { score: weightedAverage(categories), categories }
+  return { score: applicable === 0 ? null : saturationScore(totalPenalty), categories, penalty: Math.round(totalPenalty * 100) / 100 }
 }
 
 /**
