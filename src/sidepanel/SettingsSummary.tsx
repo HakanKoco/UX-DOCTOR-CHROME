@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { PROVIDER_LABELS } from '@/shared/models'
-import { getPublicSettings, type PublicSettings } from '@/shared/settings'
+import { getPublicSettings, keyStatus, type PublicSettings } from '@/shared/settings'
 
 /** Yan panelin üstünde sağlayıcı/anahtar/model durumunu gösterir; ayarlar değişince kendini günceller. */
 export function useSettings(): PublicSettings | null {
@@ -28,7 +28,7 @@ export default function SettingsSummary({ settings }: { settings: PublicSettings
         Model: <strong>{settings.model}</strong>
       </span>
       <span>
-        API anahtarı: <strong>{settings.hasApiKey ? 'kayıtlı' : 'yok'}</strong>
+        {PROVIDER_LABELS[settings.provider].split(' ')[0]} anahtarı: <strong>{keyStatus(settings).ok ? 'kayıtlı' : 'yok'}</strong>
       </span>
       <button type="button" className="secondary" onClick={() => chrome.runtime.openOptionsPage()}>
         Ayarlar

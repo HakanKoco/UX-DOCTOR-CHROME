@@ -8,6 +8,7 @@ import { PRINCIPLE_IDS, PRINCIPLE_LABELS } from '@/shared/rubric'
 import { buildReport, slugForFile, timestampForFile } from '@/shared/reportBuilder'
 import { MAX_RETRIES, RUN_INTERVAL_MS } from '@/shared/retry'
 import { detectSensitivePage } from '@/shared/sensitivity'
+import { keyStatus } from '@/shared/settings'
 import { requestSiteAccess } from '@/shared/sitePermissions'
 import {
   buildConsistencyExport,
@@ -225,11 +226,14 @@ export default function App() {
   }
 
   const llmLocked = !!privacy?.sensitive && !privacy.consentGiven
-  const llmDisabledReason = !settings?.hasApiKey
-    ? `Önce ayarlardan ${settings ? PROVIDER_API_NAMES[settings.provider] : 'API'} anahtarı girin.`
-    : llmLocked
-      ? 'Hassas sayfa: gönderim kilitli (yukarıdaki onay kutusu).'
-      : null
+  const keyState = settings ? keyStatus(settings) : null
+  const llmDisabledReason = !keyState
+    ? 'Ayarlar yükleniyor…'
+    : !keyState.ok
+      ? keyState.text
+      : llmLocked
+        ? 'Hassas sayfa: gönderim kilitli (yukarıdaki onay kutusu).'
+        : null
 
   const detGroups: FindingGroup[] = DETERMINISTIC_CATEGORY_IDS.map((id) => ({
     id,

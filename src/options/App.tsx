@@ -18,6 +18,7 @@ import {
   saveClaudeModel,
   saveGeminiModel,
   saveProvider,
+  keyStatus,
   type PublicSettings,
 } from '@/shared/settings'
 import { hasSiteAccess, revokeSiteAccess } from '@/shared/sitePermissions'
@@ -140,8 +141,11 @@ export default function App() {
 
   async function onProviderChange(provider: Provider) {
     await saveProvider(provider)
-    await reload()
-    setStatus({ kind: 'ok', text: `Sağlayıcı kaydedildi: ${PROVIDER_LABELS[provider]}.` })
+    const next = await getPublicSettings()
+    setSettings(next)
+    // Önceki sağlayıcıya ait durum/teşhis mesajı silinir; yeni durum seçili sağlayıcıya göre yazılır.
+    const ks = keyStatus(next)
+    setStatus({ kind: ks.ok ? 'ok' : 'error', text: `Sağlayıcı kaydedildi: ${PROVIDER_LABELS[provider]}. ${ks.text}` })
   }
 
   async function onModelChange(value: string) {
@@ -180,6 +184,9 @@ export default function App() {
             </label>
           ))}
         </fieldset>
+        {settings && (
+          <p className={keyStatus(settings).ok ? 'status ok' : 'status error'}>{keyStatus(settings).text}</p>
+        )}
         {provider === 'gemini' && (
           <p className="warning" role="note">
             Gemini ücretsiz katmanında Google, gönderilen içeriği ve yanıtları ürünlerini ve makine öğrenmesi

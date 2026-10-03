@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { looksLikeApiKey, normalizeApiKey } from './settings'
+import { keyStatus, looksLikeApiKey, normalizeApiKey } from './settings'
 
 // Testlerde gerçek anahtar yoktur; değerler biçim denetimi için uydurulmuş yer tutuculardır.
 
@@ -24,5 +24,28 @@ describe('normalizeApiKey', () => {
     expect(normalizeApiKey(String.fromCharCode(0xfeff) + k + String.fromCharCode(0x200b))).toBe(k) // BOM + sıfır genişlikli boşluk
     expect(normalizeApiKey('\t' + k + '\n\n')).toBe(k)
     expect(normalizeApiKey(k)).toBe(k)
+  })
+})
+
+describe('keyStatus — durum daima seçili sağlayıcıya göre', () => {
+  it('provider=gemini, Gemini anahtarı var, Claude anahtarı yok → "ayarlanmamış" çıkmaz', () => {
+    const s = keyStatus({ provider: 'gemini', hasGeminiKey: true, hasClaudeKey: false })
+    expect(s.ok).toBe(true)
+    expect(s.text).toContain('Gemini API')
+    expect(s.text).not.toContain('ayarlanmamış')
+    expect(s.text).not.toContain('Claude')
+  })
+
+  it('provider=gemini, Gemini anahtarı yok, Claude anahtarı var → Gemini için "ayarlanmamış"', () => {
+    const s = keyStatus({ provider: 'gemini', hasGeminiKey: false, hasClaudeKey: true })
+    expect(s.ok).toBe(false)
+    expect(s.text).toContain('Gemini API')
+    expect(s.text).toContain('ayarlanmamış')
+  })
+
+  it('provider=claude, Claude anahtarı var, Gemini anahtarı yok → kayıtlı', () => {
+    const s = keyStatus({ provider: 'claude', hasGeminiKey: false, hasClaudeKey: true })
+    expect(s.ok).toBe(true)
+    expect(s.text).toContain('Claude API')
   })
 })

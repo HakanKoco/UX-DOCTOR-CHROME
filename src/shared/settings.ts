@@ -103,3 +103,20 @@ export function looksLikeApiKey(provider: Provider, value: string): boolean {
   if (v.length <= 20 || /\s/.test(v)) return false
   return provider === 'claude' ? v.startsWith('sk-ant-') : true
 }
+
+const PROVIDER_KEY_NAMES: Record<Provider, string> = { claude: 'Claude API', gemini: 'Gemini API' }
+
+/**
+ * Seçili sağlayıcının anahtar durumu (saf fonksiyon). Ayarlar sayfası, yan panel özeti ve "LLM gönderimi kapalı"
+ * gerekçesi bu tek kaynaktan beslenir; böylece Gemini seçiliyken Claude anahtarının durumu gösterilmez.
+ */
+export function keyStatus(settings: Pick<PublicSettings, 'provider' | 'hasClaudeKey' | 'hasGeminiKey'>): {
+  ok: boolean
+  text: string
+} {
+  const name = PROVIDER_KEY_NAMES[settings.provider]
+  const has = settings.provider === 'claude' ? settings.hasClaudeKey : settings.hasGeminiKey
+  return has
+    ? { ok: true, text: `Seçili sağlayıcı: ${name} — anahtar kayıtlı.` }
+    : { ok: false, text: `Seçili sağlayıcı: ${name} — anahtar ayarlanmamış. Ayarlar sayfasından ${name} anahtarını girin.` }
+}
