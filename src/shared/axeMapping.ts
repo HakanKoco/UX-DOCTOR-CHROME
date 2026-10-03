@@ -73,72 +73,7 @@ export function wcagLabelFromTags(tags: readonly string[]): string {
   return `WCAG ${criteria.slice(0, 2).join(', ')}`
 }
 
-/** Kural başına Türkçe açıklama. Listede olmayan kurallarda axe'in kendi "help" metni kullanılır. */
-const DESCRIPTIONS: Record<string, string> = {
-  'color-contrast': 'Metin ile arka planı arasındaki renk kontrastı yetersiz.',
-  'image-alt': 'Görselin metin alternatifi (alt) yok.',
-  'input-image-alt': 'Görsel düğmenin (input type="image") metin alternatifi yok.',
-  'role-img-alt': 'role="img" olan öğenin metin alternatifi yok.',
-  'svg-img-alt': 'Görsel rolündeki SVG öğesinin metin alternatifi yok.',
-  'area-alt': 'Görüntü haritası alanının (<area>) metin alternatifi yok.',
-  'object-alt': '<object> öğesinin metin alternatifi yok.',
-  label: 'Form alanının erişilebilir bir etiketi yok.',
-  'select-name': 'Açılır listenin (select) erişilebilir bir adı yok.',
-  'aria-input-field-name': 'ARIA giriş alanının erişilebilir bir adı yok.',
-  'aria-toggle-field-name': 'ARIA aç/kapa alanının erişilebilir bir adı yok.',
-  'target-size': 'Tıklanabilir hedef 24×24 CSS pikselinden küçük ve çevresinde yeterli boşluk yok.',
-  'html-has-lang': 'Sayfanın dili (<html lang>) tanımlanmamış.',
-  'html-lang-valid': '<html lang> değeri geçerli bir dil kodu değil.',
-  'valid-lang': 'Bir öğedeki lang değeri geçerli bir dil kodu değil.',
-  'html-xml-lang-mismatch': '<html> öğesinde lang ve xml:lang farklı dilleri gösteriyor.',
-}
-
-const FIXES: Record<string, string> = {
-  'image-alt':
-    'Görselin anlamını anlatan bir alt metni ekleyin: <img alt="…">. Görsel yalnızca süs amaçlıysa alt="" verin.',
-  'input-image-alt': 'Görsel düğmeye işlevini anlatan alt ekleyin (ör. alt="Ara").',
-  'role-img-alt': 'Öğeye aria-label ya da aria-labelledby ile görselin anlamını veren bir ad verin.',
-  'svg-img-alt': 'SVG içine <title> ekleyin ya da aria-label / aria-labelledby ile ad verin.',
-  'area-alt': '<area> öğesine bağlantının hedefini anlatan alt ekleyin.',
-  'object-alt': '<object> öğesine aria-label ekleyin ya da içine metin alternatifi yazın.',
-  label:
-    'Alanı görünür bir <label for="alan-id"> ile ilişkilendirin. Görsel etiket mümkün değilse aria-label kullanın; placeholder tek başına etiket sayılmaz.',
-  'select-name': 'Açılır listeyi görünür bir <label for="…"> ile ilişkilendirin ya da aria-label verin.',
-  'aria-input-field-name': 'Özel giriş alanına aria-label ya da aria-labelledby ile görünür etiketine bağlı bir ad verin.',
-  'aria-toggle-field-name': 'Aç/kapa öğesine aria-label ya da aria-labelledby ile ad verin.',
-  'target-size':
-    'Tıklanabilir alanı en az 24×24 CSS pikseli yapın (padding, min-width/min-height ile) ya da komşu hedeflerle arasında 24 px çaplı bir boşluk bırakın.',
-  'html-has-lang': 'Kök öğeye sayfanın dilini ekleyin: <html lang="tr">.',
-  'html-lang-valid': 'lang değerini geçerli bir BCP 47 koduyla değiştirin (ör. lang="tr").',
-  'valid-lang': 'lang değerini geçerli bir BCP 47 koduyla değiştirin (ör. lang="en").',
-  'html-xml-lang-mismatch': 'lang ve xml:lang değerlerini aynı dile ayarlayın ya da xml:lang değerini kaldırın.',
-}
-
-export interface ContrastData {
-  fgColor?: string
-  bgColor?: string
-  contrastRatio?: number
-  expectedContrastRatio?: string
-  fontSize?: string
-  fontWeight?: string
-}
-
-export function describeRule(ruleId: string, axeHelp: string): string {
-  return DESCRIPTIONS[ruleId] ?? `axe: ${axeHelp}`
-}
-
-/** Somut düzeltme önerisi. Kontrastta ölçülen değerler öneriye yazılır. */
-export function fixForRule(ruleId: string, axeHelp: string, helpUrl: string, data?: unknown): string {
-  if (ruleId === 'color-contrast') {
-    const d = (data ?? {}) as ContrastData
-    if (d.fgColor && d.bgColor && d.contrastRatio !== undefined) {
-      const expected = d.expectedContrastRatio ?? '4.5:1'
-      return `Metin rengi ${d.fgColor} ile arka plan ${d.bgColor} arasındaki kontrast ${d.contrastRatio}:1; bu metin boyutu için en az ${expected} olmalı. Metin rengini koyulaştırın ya da arka planı açın (veya tersi) ve oranı yeniden ölçün.`
-    }
-    return 'Metin ve arka plan renklerini, normal metin için en az 4.5:1, büyük metin için en az 3:1 kontrast verecek şekilde değiştirin.'
-  }
-  return FIXES[ruleId] ?? `Kuralın gereğini karşılayın: ${axeHelp}. Ayrıntılı açıklama: ${helpUrl}`
-}
+// Kural başına Türkçe açıklama ve öneri şablonları: src/shared/axeTemplates.ts (tek kaynak).
 
 /**
  * HTML parçasındaki form değerlerini gizler; kullanıcının girdiği değer rapora bile girmez:

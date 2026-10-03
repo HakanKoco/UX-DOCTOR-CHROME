@@ -1,7 +1,7 @@
 // Rapor JSON şeması — TEK KAYNAK. Dışa aktarılan raporlar, yan panel ve skorlama bu tipleri kullanır.
 // Şema değişirse REPORT_SCHEMA_VERSION artırılır.
 
-export const REPORT_SCHEMA_VERSION = '1.1.0'
+export const REPORT_SCHEMA_VERSION = '1.2.0'
 
 export type Severity = 'Kritik' | 'Yüksek' | 'Orta' | 'Düşük'
 export const SEVERITIES: readonly Severity[] = ['Kritik', 'Yüksek', 'Orta', 'Düşük']
@@ -41,6 +41,16 @@ export interface Finding {
   description: string
   fix: string
   evidence: FindingEvidence
+  /** Deterministik bulgularda axe'in özgün (İngilizce) metni ve kaynağı; arayüzde "Teknik ayrıntı" altında gösterilir. */
+  technicalDetail?: TechnicalDetail
+}
+
+export interface TechnicalDetail {
+  /** axe kuralının kısa yardım metni (İngilizce). */
+  help: string
+  helpUrl: string
+  /** axe'in bu öğe için hata özeti (İngilizce, varsa). */
+  summary?: string
 }
 
 /** axe'in "incomplete" sonuçları: ihlal sayılmaz, "elle incelenmeli" listesinde gösterilir. */
@@ -49,6 +59,9 @@ export interface ManualReviewItem {
   rule: string
   category: DeterministicCategoryId
   description: string
+  /** Türkçe öneri (kural şablonundan). */
+  fix: string
+  technicalDetail: TechnicalDetail
   nodes: { selector: string; highlightable: boolean; html?: string; reason?: string }[]
 }
 

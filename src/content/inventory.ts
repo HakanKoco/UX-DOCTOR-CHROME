@@ -130,7 +130,7 @@ function labelText(el: Element): string {
   return clip(parts.filter(Boolean).join(' '))
 }
 
-function implicitRole(el: Element): string {
+export function implicitRole(el: Element): string {
   const tag = el.tagName.toLowerCase()
   const type = (el.getAttribute('type') ?? 'text').toLowerCase()
   switch (tag) {
@@ -182,7 +182,7 @@ function implicitRole(el: Element): string {
   }
 }
 
-function accessibleName(el: Element): { name: string; source: NameSource } {
+export function accessibleName(el: Element): { name: string; source: NameSource } {
   const labelledby = el.getAttribute('aria-labelledby')
   if (labelledby) {
     const t = textOfIds(labelledby)

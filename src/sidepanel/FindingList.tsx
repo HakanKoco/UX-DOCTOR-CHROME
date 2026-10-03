@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Finding, Severity } from '@/shared/report'
+import type { Finding, Severity, TechnicalDetail } from '@/shared/report'
 import { SEVERITIES } from '@/shared/report'
 
 const PAGE_SIZE = 15
@@ -15,6 +15,23 @@ interface Props {
   onHighlight: (findings: Finding[], scroll: boolean) => void
   onScreenshot?: (finding: Finding) => void
   emptyText: string
+}
+
+/** axe'in özgün (İngilizce) metni yalnızca burada, kapalı bir bölümde gösterilir. */
+export function TechnicalDetailBlock({ detail }: { detail: TechnicalDetail }) {
+  return (
+    <details>
+      <summary>Teknik ayrıntı (axe, İngilizce)</summary>
+      <p className="muted">{detail.help}</p>
+      {detail.summary && <pre className="snippet">{detail.summary}</pre>}
+      <p className="muted">
+        Kaynak:{' '}
+        <a href={detail.helpUrl} target="_blank" rel="noreferrer">
+          {detail.helpUrl}
+        </a>
+      </p>
+    </details>
+  )
 }
 
 export function SeverityBadge({ severity }: { severity: Severity }) {
@@ -55,6 +72,7 @@ function FindingItem({ finding, onHighlight, onScreenshot }: { finding: Finding 
           <pre className="snippet">{finding.evidence.html}</pre>
         </details>
       )}
+      {finding.technicalDetail && <TechnicalDetailBlock detail={finding.technicalDetail} />}
       {finding.evidence.screenshot && (
         <img className="evidence-shot" src={finding.evidence.screenshot} alt={`Kanıt görüntüsü: ${finding.selector}`} />
       )}

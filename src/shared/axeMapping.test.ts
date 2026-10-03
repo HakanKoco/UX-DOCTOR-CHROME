@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { categoryForRule, fixForRule, severityFromImpact, stripValueAttributes, wcagLabelFromTags } from './axeMapping'
+import { categoryForRule, severityFromImpact, stripValueAttributes, wcagLabelFromTags } from './axeMapping'
 import { sanitizeEvidenceHtml } from './sanitize'
 
 describe('wcagLabelFromTags', () => {
@@ -36,23 +36,6 @@ describe('severityFromImpact', () => {
     expect(severityFromImpact('moderate')).toBe('Orta')
     expect(severityFromImpact('minor')).toBe('Düşük')
     expect(severityFromImpact(null)).toBe('Orta')
-  })
-})
-
-describe('fixForRule', () => {
-  it('kontrast önerisine ölçülen değerleri yazar', () => {
-    const fix = fixForRule('color-contrast', '', '', {
-      fgColor: '#aaaaaa',
-      bgColor: '#ffffff',
-      contrastRatio: 2.32,
-      expectedContrastRatio: '4.5:1',
-    })
-    expect(fix).toContain('#aaaaaa')
-    expect(fix).toContain('2.32:1')
-    expect(fix).toContain('4.5:1')
-  })
-  it('bilinmeyen kuralda axe yardım metnine ve bağlantısına döner', () => {
-    expect(fixForRule('link-name', 'Links must have discernible text', 'https://x')).toContain('https://x')
   })
 })
 
