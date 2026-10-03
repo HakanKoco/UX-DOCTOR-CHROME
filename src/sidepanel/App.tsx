@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { CATEGORY_LABELS, DETERMINISTIC_CATEGORY_IDS } from '@/shared/axeMapping'
 import type { DeterministicRaw, PageInfo } from '@/shared/contentApi'
 import type { Inventory } from '@/shared/inventory'
 import { buildRequestBody, buildUserPayload, requiredBetas, type LlmRequestBody } from '@/shared/llmRequest'
 import type { Finding, LlmResult, PrivacyRecord } from '@/shared/report'
 import { PRINCIPLE_IDS, PRINCIPLE_LABELS } from '@/shared/rubric'
+import { buildReport, slugForFile, timestampForFile } from '@/shared/reportBuilder'
 import { detectSensitivePage } from '@/shared/sensitivity'
 import { requestSiteAccess } from '@/shared/sitePermissions'
 import ConfirmSendDialog from './ConfirmSendDialog'
@@ -12,8 +13,11 @@ import FindingList, { type FindingGroup } from './FindingList'
 import LlmDetails from './LlmDetails'
 import ManualReviewList from './ManualReviewList'
 import PrivacyPanel from './PrivacyPanel'
+import ScoreSummary from './ScoreSummary'
 import SettingsSummary, { useSettings } from './SettingsSummary'
+import { downloadJson } from './download'
 import { buildLlmResult, callLlm } from './llmClient'
+import { captureFindingScreenshot } from './screenshot'
 import { TabAccessError, callContent, getActiveTab } from './tabBridge'
 
 interface PendingSend {
@@ -33,10 +37,13 @@ function toUiError(e: unknown): UiError {
 export default function App() {
   const settings = useSettings()
   const [tabId, setTabId] = useState<number | null>(null)
+  const [windowId, setWindowId] = useState<number | null>(null)
   const [page, setPage] = useState<PageInfo | null>(null)
   const [det, setDet] = useState<DeterministicRaw | null>(null)
   const [privacy, setPrivacy] = useState<PrivacyRecord | null>(null)
   const [llm, setLlm] = useState<LlmResult | null>(null)
+  /** LLM'e gerçekten gönderilen gövde (rapora aynen yazılır). */
+  const [sentBody, setSentBody] = useState<LlmRequestBody | null>(null)
   const [pending, setPending] = useState<PendingSend | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<UiError>(null)
@@ -45,9 +52,11 @@ export default function App() {
     setBusy('Deterministik analiz çalışıyor…')
     setError(null)
     setLlm(null)
+    setSentBody(null)
     try {
       const tab = await getActiveTab()
       setTabId(tab.id)
+      setWindowId(tab.windowId)
       setPage(await callContent(tab.id, 'getPageInfo'))
       const sensitivity = detectSensitivePage(await callContent(tab.id, 'collectSensitivitySignals'))
       setPrivacy({ sensitive: sensitivity.sensitive, reasons: sensitivity.reasons, consentGiven: false })
@@ -81,6 +90,7 @@ export default function App() {
     try {
       const call = await callLlm(body)
       setLlm(await buildLlmResult(call, body, inventory, tabId))
+      setSentBody(body)
     } catch (e) {
       setError(toUiError(e))
     } finally {
@@ -106,6 +116,36 @@ export default function App() {
     } catch (e) {
       setError(toUiError(e))
     }
+  }
+
+  async function screenshotFinding(finding: Finding) {
+    if (tabId === null || windowId === null) return
+    setError(null)
+    setBusy('Kanıt görüntüsü alınıyor…')
+    try {
+      const shot = await captureFindingScreenshot(tabId, windowId, finding)
+      const attach = (list: Finding[]) =>
+        list.map((f) => (f.id === finding.id ? { ...f, evidence: { ...f.evidence, screenshot: shot } } : f))
+      if (finding.source === 'deterministic') setDet((d) => (d ? { ...d, findings: attach(d.findings) } : d))
+      else setLlm((l) => (l ? { ...l, findings: attach(l.findings) } : l))
+    } catch (e) {
+      setError(toUiError(e))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const report = useMemo(
+    () =>
+      page && privacy && det
+        ? buildReport({ toolVersion: chrome.runtime.getManifest().version, page, privacy, det, llm, llmRequest: sentBody })
+        : null,
+    [page, privacy, det, llm, sentBody],
+  )
+
+  function exportReport() {
+    if (!report || !page) return
+    downloadJson(`ux-doktor-${slugForFile(page.host)}-${timestampForFile()}.json`, report)
   }
 
   const llmLocked = !!privacy?.sensitive && !privacy.consentGiven
@@ -171,10 +211,21 @@ export default function App() {
         />
       )}
 
+      {report && (
+        <>
+          <ScoreSummary scores={report.scores} />
+          <div className="row toolbar">
+            <button type="button" onClick={exportReport}>
+              Raporu JSON olarak indir
+            </button>
+          </div>
+        </>
+      )}
+
       {det && (
         <section aria-labelledby="det-title">
           <h2 id="det-title">Deterministik bulgular (axe-core {det.engineVersion})</h2>
-          <FindingList groups={detGroups} onHighlight={highlightFindings} emptyText="WCAG 2.2 AA ihlali bulunmadı." />
+          <FindingList groups={detGroups} onHighlight={highlightFindings} onScreenshot={screenshotFinding} emptyText="WCAG 2.2 AA ihlali bulunmadı." />
           <ManualReviewList
             items={det.manualReview}
             onHighlight={(selector) =>
@@ -199,7 +250,7 @@ export default function App() {
           {llm && (
             <>
               <LlmDetails llm={llm} />
-              <FindingList groups={llmGroups} onHighlight={highlightFindings} emptyText="LLM kanıtlı bir sorun bildirmedi." />
+              <FindingList groups={llmGroups} onHighlight={highlightFindings} onScreenshot={screenshotFinding} emptyText="LLM kanıtlı bir sorun bildirmedi." />
             </>
           )}
         </section>
