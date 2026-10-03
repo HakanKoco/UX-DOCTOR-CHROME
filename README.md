@@ -289,14 +289,34 @@ kılar.
 
 ## Gizlilik ve güvenlik
 
-- **Hassas sayfa tespiti** (`src/shared/sensitivity.ts`, birim testli). Sinyaller:
-  - şifre alanı,
-  - `autocomplete="cc-*"`, `one-time-code`, `current-password`, `new-password`,
-  - hesap/oturum metinleri ("Hesabım", "Çıkış Yap", "Profilim", "Randevularım", …),
-  - giriş/hesap/ödeme URL kalıpları ve kimlik doğrulamalı hizmetler (giris.turkiye.gov.tr, e-Nabız, MHRS).
+- **Hassas sayfa tespiti — üç durumlu karar** (`src/shared/sensitivity.ts`, birim ve tarayıcı testli):
 
-  Tespit edilirse LLM gönderimi **kilitlenir**. Kullanıcı açık onay kutusunu işaretlerse açılır; onay ve zamanı
-  rapora (`privacy`) yazılır.
+  | Karar | Ne zaman | LLM gönderimi |
+  |---|---|---|
+  | **hassas** (`sensitive`) | En az bir güçlü sinyal | Kilitli; açık onayla açılır |
+  | **belirsiz** (`uncertain`) | Yalnız zayıf sinyaller | Kilitli; açık onayla açılır (şüphede gönderilmez) |
+  | **hassas değil** (`safe`) | Hiç sinyal yok | Açık (yine de her gönderimde onay ekranı) |
+
+  - **Güçlü sinyaller:**
+    - görünür şifre alanı,
+    - görünür alanda `autocomplete="cc-*"`, `one-time-code`, `current-password`, `new-password`,
+    - **görünür** hesap/oturum metinleri ("Hesabım", "Çıkış Yap", "Profilim", "Randevularım", …),
+    - giriş/hesap/ödeme URL kalıpları ve kimlik doğrulamalı hizmetler (giris.turkiye.gov.tr, e-Nabız, MHRS),
+    - bilinen özel uygulamalar: yapay zekâ sohbeti (claude.ai, chatgpt.com, gemini.google.com, …), e-posta,
+      mesajlaşma, kişisel belge, internet bankacılığı.
+  - **Zayıf sinyaller:**
+    - yalnızca **görünmeyen** öğelerdeki hesap/oturum metni (kapalı menü, şablon),
+    - görünmeyen şifre/kart alanı,
+    - `<meta name="robots" content="noindex">`,
+    - büyük düzenlenebilir yazma alanı (contenteditable / çok satırlı textbox; içeriği okunmaz; düz `<textarea>`
+      sayılmaz, böylece iletişim formları tek başına alarm vermez),
+    - `role="log"` bölgesi,
+    - `/chat/…`, `/inbox` gibi yol kalıpları. `/c/…` e-ticaret kategori adreslerinde yaygın olduğu için bilerek
+      listede yok.
+
+  Görünürlük `Element.checkVisibility()` ile ölçülür. Görünmeyen öğenin `innerText` değeri `textContent`'e
+  düştüğü için eski sürüm gizli menü metinlerini görünür sayıyordu. Karar, güçlü/zayıf gerekçeler, onay ve zamanı
+  rapora (`privacy.level`, `strongReasons`, `weakReasons`, `consentGiven`, `consentAt`) yazılır.
 - **Gönderim onayı:** her LLM gönderiminden önce onay ekranı açılır. Gönderilecek gövdenin tamamı gösterilir ve
   gönderilen gövdeyle birebir aynıdır (uçtan uca testte doğrulandı). Tutarlılık testinde onay ekranı N'yi açıkça yazar.
 - **Maskeleme** (`src/shared/masking.ts`, birim testli): TC kimlik no (11 hane), telefon (TR ve uluslararası),
@@ -569,8 +589,21 @@ Kontrol iki aşamalıdır:
 - **Maskeleme kurallı (regex) çalışır:**
   - Kişi adları ve serbest metindeki sağlık bilgisi maskelenmez.
   - Şüpheli uzun sayılar (13-19 hane) kart olarak maskelenebilir; bu bilinçli olarak fazla maskelemedir.
-- **Hassas sayfa tespiti sezgiseldir.** Oturum metni olmayan kişisel sayfalar kaçabilir; herkese açık bir sayfadaki
-  "Hesabım" bağlantısı yanlış alarm verebilir (kullanıcı onayıyla açılır).
+- **Hassas sayfa tespiti sezgiseldir.** Özel uygulama listesi hiçbir zaman tam değildir. Herkese açık bir sayfadaki
+  görünür "Hesabım" bağlantısı, `noindex` ya da büyük bir yazma alanı yanlış alarm verebilir (kullanıcı onayıyla
+  açılır).
+- **Gerçek gözlemler (öğrencinin ilk denemeleri; ölçüm değil, nitel gözlem):**
+  - **Yanlış alarm — learn.microsoft.com** (herkese açık belge sayfası): eski sürüm sayfayı **hassas** saydı.
+    Gerekçe olarak "oturumu kapat" metni gösterildi. Olası neden: oturum açılmamış sayfadaki kapalı kullanıcı menüsü
+    şablonu. Görünmeyen öğenin metni görünür sayılıyordu. Düzeltme: gizli metin artık yalnızca zayıf sinyal; karar en
+    çok **belirsiz** olur. Anonim yeniden kurgu: `tests/fixtures/gizlilik-belge-sayfasi.html`.
+  - **Kaçırılan hassas sayfa — claude.ai** (giriş yapılmış özel sohbet): eski sürüm "hassas işareti bulunmadı" dedi.
+    Şifre alanı, hesap URL kalıbı ya da görünür çıkış metni yoktu. Ödevin etik bölümü açısından en riskli durum
+    budur. Düzeltme: bilinen sohbet uygulamaları alan adı listesi (güçlü sinyal → **hassas**) ve uygulama kabuğu
+    işaretleri (yazma alanı, `role="log"`, `noindex` → en az **belirsiz**). Anonim yeniden kurgu:
+    `tests/fixtures/gizlilik-sohbet-uygulamasi.html`.
+  - Fixture'lar gerçek sayfalardan kopyalanmadı. Yapıları gözleme dayanan varsayımlardır ve gerçek kişisel içerik
+    içermezler. Gerçek sayfaların bugünkü davranışı elle yeniden denenmelidir.
 - **Ekran görüntüsü** `activeTab` (ya da `<all_urls>`) ister. İsteğe bağlı http/https izni bunun yerine geçmez; bu
   durumda vurgulama kullanılabilir.
 - **activeTab ve yan panel:** Resmi doküman, simgeye tıklanınca açılan yan panelin activeTab verip vermediğini

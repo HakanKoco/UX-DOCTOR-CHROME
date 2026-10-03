@@ -84,9 +84,15 @@ export interface LayerScore {
 }
 
 export interface PrivacyRecord {
+  /** Üç durumlu karar: "safe" (hassas değil), "uncertain" (belirsiz), "sensitive" (hassas). */
+  level: 'safe' | 'uncertain' | 'sensitive'
+  /** level === "sensitive". "uncertain" da LLM gönderimini kilitler (bkz. level). */
   sensitive: boolean
+  /** Tüm gerekçeler (önce güçlü, sonra zayıf sinyaller). */
   reasons: string[]
-  /** Hassas sayfada kullanıcı açık onay verdiyse true. */
+  strongReasons: string[]
+  weakReasons: string[]
+  /** Hassas ya da belirsiz sayfada kullanıcı açık onay verdiyse true. */
   consentGiven: boolean
   consentAt?: string
 }

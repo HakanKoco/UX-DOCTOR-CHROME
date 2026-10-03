@@ -1,0 +1,37 @@
+<!doctype html>
+<!-- Gizlilik tespiti fixture'ı (a): learn.microsoft.com'da gözlenen YANLIŞ ALARMIN anonim yeniden kurgusu.
+     Herkese açık belge sayfası; oturum açılmamış ("Oturum aç" görünür), ama kapalı (gizli) bir kullanıcı menüsü
+     şablonunda "Oturumu kapat" metni var. Yapı varsayımsaldır; gerçek sayfanın DOM'u kopyalanmadı.
+     Gerçek kişisel içerik yoktur. Beklenen: "hassas değil" ya da "belirsiz" (asla "hassas"). -->
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Örnek belge sayfası</title>
+  </head>
+  <body>
+    <header>
+      <nav aria-label="Site">
+        <ul>
+          <li><a href="#belgeler">Belgeler</a></li>
+          <li><a href="#egitim">Eğitim</a></li>
+          <li><a href="#soru">Soru-Cevap</a></li>
+        </ul>
+      </nav>
+      <button type="button">Oturum aç</button>
+      <div class="kullanici-menusu" hidden>
+        <ul>
+          <li><a href="#profil">Profil</a></li>
+          <li><a href="#ayarlar">Ayarlar</a></li>
+          <li><a href="#cikis">Oturumu kapat</a></li>
+        </ul>
+      </div>
+    </header>
+    <main>
+      <h1>Lorem ipsum belge başlığı</h1>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Örnek kod açıklaması.</p>
+      <pre><code>console.log("örnek")</code></pre>
+      <h2>Dolor sit amet</h2>
+      <p>Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+    </main>
+  </body>
+</html>

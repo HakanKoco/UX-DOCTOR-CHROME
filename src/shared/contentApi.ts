@@ -5,7 +5,7 @@ import type { Inventory } from './inventory'
 import type { SensitivitySignals } from './sensitivity'
 
 // API değiştiğinde artırılır: sekmede eski sürüm kaldıysa yan panel betiği yeniden enjekte eder.
-export const CONTENT_API_VERSION = 4
+export const CONTENT_API_VERSION = 5
 
 import type { TranslationResult } from './translation'
 

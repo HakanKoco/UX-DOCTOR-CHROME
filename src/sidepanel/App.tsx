@@ -7,7 +7,7 @@ import type { Finding, LlmResult, PrivacyRecord } from '@/shared/report'
 import { PRINCIPLE_IDS, PRINCIPLE_LABELS } from '@/shared/rubric'
 import { buildReport, slugForFile, timestampForFile } from '@/shared/reportBuilder'
 import { MAX_RETRIES, RUN_INTERVAL_MS } from '@/shared/retry'
-import { detectSensitivePage } from '@/shared/sensitivity'
+import { detectSensitivePage, isLocked } from '@/shared/sensitivity'
 import { keyStatus } from '@/shared/settings'
 import { requestSiteAccess } from '@/shared/sitePermissions'
 import {
@@ -81,7 +81,14 @@ export default function App() {
       setWindowId(tab.windowId)
       setPage(await callContent(tab.id, 'getPageInfo'))
       const sensitivity = detectSensitivePage(await callContent(tab.id, 'collectSensitivitySignals'))
-      setPrivacy({ sensitive: sensitivity.sensitive, reasons: sensitivity.reasons, consentGiven: false })
+      setPrivacy({
+        level: sensitivity.level,
+        sensitive: sensitivity.level === 'sensitive',
+        reasons: [...sensitivity.strongReasons, ...sensitivity.weakReasons],
+        strongReasons: sensitivity.strongReasons,
+        weakReasons: sensitivity.weakReasons,
+        consentGiven: false,
+      })
       setDet(await callContent(tab.id, 'runDeterministic'))
     } catch (e) {
       setError(toUiError(e))
@@ -226,14 +233,16 @@ export default function App() {
     downloadJson(`ux-doktor-${slugForFile(page.host)}-${timestampForFile()}.json`, report)
   }
 
-  const llmLocked = !!privacy?.sensitive && !privacy.consentGiven
+  const llmLocked = !!privacy && isLocked(privacy.level) && !privacy.consentGiven
   const keyState = settings ? keyStatus(settings) : null
   const llmDisabledReason = !keyState
     ? 'Ayarlar yükleniyor…'
     : !keyState.ok
       ? keyState.text
       : llmLocked
-        ? 'Hassas sayfa: gönderim kilitli (yukarıdaki onay kutusu).'
+        ? privacy?.level === 'uncertain'
+          ? 'Belirsiz sayfa: gönderim kilitli; yukarıdaki onay kutusuyla açılır.'
+          : 'Hassas sayfa: gönderim kilitli (yukarıdaki onay kutusu).'
         : null
 
   const detGroups: FindingGroup[] = DETERMINISTIC_CATEGORY_IDS.map((id) => ({

@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- Gizlilik tespiti fixture'ı (b): claude.ai'da gözlenen KAÇIRILAN hassas sayfanın anonim yeniden kurgusu.
+     Giriş yapılmış bir sohbet uygulaması kabuğu: sohbet listesi, mesaj alanı, büyük bir yazma alanı
+     (contenteditable) ve kapalı bir hesap menüsü. Şifre alanı ya da görünür "Çıkış" metni YOK (eski sürüm bu yüzden
+     "hassas değil" diyordu). Yapı varsayımsaldır; gerçek sayfanın DOM'u kopyalanmadı. Gerçek kişisel içerik ya da
+     sohbet metni yoktur. Beklenen: "hassas" ya da "belirsiz". (Gerçek adreste claude.ai alan adı ayrıca "hassas" yapar;
+     fixture file:// ile açıldığı için bu sinyal birim testinde denenir.) -->
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sohbet</title>
+    <style>
+      body { margin: 0; display: flex; font-family: sans-serif; }
+      nav { width: 240px; }
+      main { flex: 1; padding: 16px; }
+      .yazma-alani { width: 640px; min-height: 64px; border: 1px solid #888; padding: 8px; }
+    </style>
+  </head>
+  <body>
+    <nav aria-label="Sohbetler">
+      <button type="button">Yeni sohbet</button>
+      <h2>Son sohbetler</h2>
+      <ul>
+        <li><a href="#s1">Sohbet 1</a></li>
+        <li><a href="#s2">Sohbet 2</a></li>
+      </ul>
+      <button type="button" aria-haspopup="menu" aria-expanded="false">Ayarlar</button>
+      <div role="menu" hidden>
+        <a role="menuitem" href="#hesap">Hesap</a>
+        <a role="menuitem" href="#cikis">Çıkış yap</a>
+      </div>
+    </nav>
+    <main>
+      <div class="mesajlar">
+        <article><p>Lorem ipsum soru metni.</p></article>
+        <article><p>Dolor sit amet yanıt metni.</p></article>
+      </div>
+      <div class="yazma-alani" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Mesaj yazın"></div>
+      <button type="button">Gönder</button>
+    </main>
+  </body>
+</html>

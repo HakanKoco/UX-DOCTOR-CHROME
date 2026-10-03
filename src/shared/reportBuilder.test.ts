@@ -33,7 +33,7 @@ describe('buildReport', () => {
     const r = buildReport({
       toolVersion: '1.0.0',
       page,
-      privacy: { sensitive: false, reasons: [], consentGiven: false },
+      privacy: { level: 'safe', sensitive: false, reasons: [], strongReasons: [], weakReasons: [], consentGiven: false },
       det,
       llm: null,
       llmRequest: null,
@@ -49,14 +49,25 @@ describe('buildReport', () => {
     const r = buildReport({
       toolVersion: '1.0.0',
       page,
-      privacy: { sensitive: true, reasons: ['Şifre alanı var (1 adet).'], consentGiven: true, consentAt: '2026-10-03T10:01:00.000Z' },
+      privacy: {
+        level: 'sensitive',
+        sensitive: true,
+        reasons: ['Görünür şifre alanı var (1 adet).'],
+        strongReasons: ['Görünür şifre alanı var (1 adet).'],
+        weakReasons: [],
+        consentGiven: true,
+        consentAt: '2026-10-03T10:01:00.000Z',
+      },
       det,
       llm: null,
       llmRequest: null,
     })
     expect(r.privacy).toEqual({
+      level: 'sensitive',
       sensitive: true,
-      reasons: ['Şifre alanı var (1 adet).'],
+      reasons: ['Görünür şifre alanı var (1 adet).'],
+      strongReasons: ['Görünür şifre alanı var (1 adet).'],
+      weakReasons: [],
       consentGiven: true,
       consentAt: '2026-10-03T10:01:00.000Z',
     })
