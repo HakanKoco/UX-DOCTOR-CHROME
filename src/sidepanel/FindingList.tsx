@@ -1,8 +1,18 @@
 import { useState } from 'react'
 import type { Finding, Severity, TechnicalDetail } from '@/shared/report'
 import { SEVERITIES } from '@/shared/report'
+import { THIRD_PARTY_KIND_LABELS, type ThirdPartyTag } from '@/shared/thirdParty'
 
 const PAGE_SIZE = 15
+
+/** Bilinen üçüncü taraf bileşenine ait bulgu: yalnızca etiket, skoru etkilemez. */
+export function ThirdPartyBadge({ tag }: { tag: ThirdPartyTag }) {
+  return (
+    <span className="third-party">
+      Üçüncü taraf bileşen ({tag.vendor}, {THIRD_PARTY_KIND_LABELS[tag.kind]})
+    </span>
+  )
+}
 
 export interface FindingGroup {
   id: string
@@ -52,6 +62,7 @@ function FindingItem({ finding, onHighlight, onScreenshot }: { finding: Finding 
         <SeverityBadge severity={finding.severity} />
         <strong>{finding.rule}</strong>
         {finding.elementId && <code>{finding.elementId}</code>}
+        {finding.thirdParty && <ThirdPartyBadge tag={finding.thirdParty} />}
       </div>
       <p className="finding-desc">{finding.description}</p>
       <p className="finding-fix">

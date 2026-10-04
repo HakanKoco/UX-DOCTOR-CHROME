@@ -35,11 +35,11 @@ Her satır bir sorundur: ya elle bulunmuştur ya da aracın bildirdiği bir bulg
 - **Kaçırdı:** Elle bulunan gerçek bir sorun ama araç bildirmedi.
 - **Yanlış alarm:** Araç bildirdi ama elle kontrol edildiğinde sorun değil.
 
-| # | Sorun | Kaynak (elle / araç-deterministik / araç-LLM) | Araç sonucu (Yakalandı / Kaçırdı / Yanlış alarm) | Araçtaki bulgu kimliği ve kural (ör. `D-color-contrast-1`, WCAG 1.4.3) | Kanıt (seçici, ekran görüntüsü) | Not |
-|---|---|---|---|---|---|---|
-| 1 | TODO: gerçek ölçüm | | | | | |
-| 2 | TODO: gerçek ölçüm | | | | | |
-| 3 | TODO: gerçek ölçüm | | | | | |
+| # | Sorun | Kaynak (elle / araç-deterministik / araç-LLM) | Araç sonucu (Yakalandı / Kaçırdı / Yanlış alarm) | Araçtaki bulgu kimliği ve kural (ör. `D-color-contrast-1`, WCAG 1.4.3) | Kanıt (seçici, ekran görüntüsü) | Üçüncü taraf mı? (rapordaki `thirdParty`; ör. çerez bandı) | Not |
+|---|---|---|---|---|---|---|---|
+| 1 | TODO: gerçek ölçüm | | | | | | |
+| 2 | TODO: gerçek ölçüm | | | | | | |
+| 3 | TODO: gerçek ölçüm | | | | | | |
 
 ## 4. Özet
 

@@ -218,3 +218,14 @@ button.small {
   padding-left: 1.2em;
   margin: 0;
 }
+
+/* Üçüncü taraf bileşen etiketi (yalnızca bilgi; skoru etkilemez). Kontrast: koyu yazı / açık zemin ≥ 4,5:1. */
+.third-party {
+  display: inline-block;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 0 6px;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--card);
+}

@@ -1,8 +1,9 @@
 // Rapor JSON şeması — TEK KAYNAK. Dışa aktarılan raporlar, yan panel ve skorlama bu tipleri kullanır.
 // Şema değişirse REPORT_SCHEMA_VERSION artırılır.
 import type { LoadState } from './loadState'
+import type { ThirdPartyTag } from './thirdParty'
 
-export const REPORT_SCHEMA_VERSION = '1.3.0'
+export const REPORT_SCHEMA_VERSION = '1.4.0'
 
 export type Severity = 'Kritik' | 'Yüksek' | 'Orta' | 'Düşük'
 export const SEVERITIES: readonly Severity[] = ['Kritik', 'Yüksek', 'Orta', 'Düşük']
@@ -44,6 +45,11 @@ export interface Finding {
   evidence: FindingEvidence
   /** Deterministik bulgularda axe'in özgün (İngilizce) metni ve kaynağı; arayüzde "Teknik ayrıntı" altında gösterilir. */
   technicalDetail?: TechnicalDetail
+  /**
+   * Öğe bilinen bir üçüncü taraf çerez/onay bileşenine ait (src/shared/thirdParty.ts). YALNIZCA etikettir:
+   * bulgu skora aynen girer (Ödev 4.b yanlış alarm analizinde kullanılır).
+   */
+  thirdParty?: ThirdPartyTag
 }
 
 export interface TechnicalDetail {
@@ -63,7 +69,7 @@ export interface ManualReviewItem {
   /** Türkçe öneri (kural şablonundan). */
   fix: string
   technicalDetail: TechnicalDetail
-  nodes: { selector: string; highlightable: boolean; html?: string; reason?: string }[]
+  nodes: { selector: string; highlightable: boolean; html?: string; reason?: string; thirdParty?: ThirdPartyTag }[]
 }
 
 export interface CategoryScore {

@@ -15,8 +15,15 @@ import type { DeterministicRaw } from '@/shared/contentApi'
 import { maskText } from '@/shared/masking'
 import { sanitizeEvidenceHtml } from '@/shared/sanitize'
 import type { DeterministicCategoryId, Finding, ManualReviewItem } from '@/shared/report'
+import { thirdPartyOf, type ThirdPartyTag } from '@/shared/thirdParty'
 import { accessibleName, implicitRole } from './inventory'
 import { resolveSelector } from './selector'
+
+/** Bulgu bilinen bir üçüncü taraf çerez/onay bileşenindeyse etiket alanı (skoru etkilemez). */
+function thirdPartyField(el: Element | undefined): { thirdParty?: ThirdPartyTag } {
+  const tag = thirdPartyOf(el)
+  return tag ? { thirdParty: tag } : {}
+}
 
 let running = false
 
@@ -85,6 +92,7 @@ export async function runDeterministic(): Promise<DeterministicRaw> {
           description: text.description,
           fix: text.fix,
           evidence: { highlightable, html: evidenceHtml(node.html) },
+          ...thirdPartyField(node.element),
           technicalDetail: {
             help: rule.help,
             helpUrl: rule.helpUrl,
@@ -107,7 +115,7 @@ export async function runDeterministic(): Promise<DeterministicRaw> {
         nodes: rule.nodes.map((node) => {
           const { selector, highlightable } = resolveSelector(node.target, node.element)
           const reason = [...node.any, ...node.all, ...node.none].find((c) => c.message)?.message
-          return { selector, highlightable, html: evidenceHtml(node.html), reason }
+          return { selector, highlightable, html: evidenceHtml(node.html), reason, ...thirdPartyField(node.element) }
         }),
       }
     })

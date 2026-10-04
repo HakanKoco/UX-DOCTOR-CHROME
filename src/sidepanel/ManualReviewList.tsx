@@ -1,5 +1,5 @@
 import type { ManualReviewItem } from '@/shared/report'
-import { TechnicalDetailBlock } from './FindingList'
+import { TechnicalDetailBlock, ThirdPartyBadge } from './FindingList'
 
 interface Props {
   items: ManualReviewItem[]
@@ -36,6 +36,7 @@ export default function ManualReviewList({ items, onHighlight }: Props) {
                 <li key={`${node.selector}-${i}`}>
                   <code>{node.selector}</code>
                   {node.reason && <span className="muted" lang="en"> — {node.reason}</span>}{' '}
+                  {node.thirdParty && <ThirdPartyBadge tag={node.thirdParty} />}{' '}
                   <button
                     type="button"
                     className="secondary small"

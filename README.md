@@ -575,6 +575,12 @@ Her bulgu (`Finding`) şu alanları içerir:
 - `severity` (Kritik / Yüksek / Orta / Düşük),
 - `description` ve `fix`,
 - `evidence`: vurgulanabilirlik, maskelenmiş HTML ve isteğe bağlı ekran görüntüsü.
+- `thirdParty` (isteğe bağlı): öğe bilinen bir üçüncü taraf çerez/onay bileşenindeyse `{ vendor, kind }`
+  (CookieSeal, OneTrust, Cookiebot, Usercentrics, Didomi, CookieYes, Quantcast Choice; `src/shared/thirdParty.ts`).
+  **Yalnızca etikettir:** bulgu silinmez ve skora aynen girer (`tests/browser/third-party.test.ts`). Amaç, Ödev
+  4.b manuel karşılaştırmasında site sahibinin doğrudan yazmadığı bileşenleri ayırabilmektir. Kök seçiciler resmi bir
+  dokümandan değil, sağlayıcıların bilinen DOM kalıplarından alınmıştır; liste eksik olabilir. Panelde "Üçüncü taraf
+  bileşen (…)" rozeti görünür. "Elle incelenmeli" öğelerinde de aynı etiket bulunur.
 
 ---
 
