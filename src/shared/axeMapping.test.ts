@@ -53,6 +53,21 @@ describe('stripValueAttributes + sanitizeEvidenceHtml', () => {
     )
     expect(stripValueAttributes('<textarea name="not">Gizli not uzun')).toBe('<textarea name="not">[gizlendi]')
   })
+  it('contenteditable içeriğini gizler (iç içe öğeler ve kesilmiş parça dahil); "false" düzenlenebilir sayılmaz', () => {
+    expect(stripValueAttributes('<div contenteditable="true" aria-label="Not">Gizli <b>metin</b></div>')).toBe(
+      '<div contenteditable="true" aria-label="Not">[gizlendi]</div>',
+    )
+    expect(stripValueAttributes('<p contenteditable>Gizli')).toBe('<p contenteditable>[gizlendi]')
+    expect(stripValueAttributes("<div contenteditable='plaintext-only'>x</div>")).toBe(
+      "<div contenteditable='plaintext-only'>[gizlendi]</div>",
+    )
+    expect(stripValueAttributes('<section><div contenteditable="">a</div><p>b</p></section>')).toBe(
+      '<section><div contenteditable="">[gizlendi]', // sonrası (kapanışlar dahil) gizlenir
+    )
+    expect(stripValueAttributes('<div contenteditable="false">Açık metin</div>')).toBe(
+      '<div contenteditable="false">Açık metin</div>',
+    )
+  })
   it('kanıt HTML parçasındaki kişisel verileri maskeler', () => {
     expect(sanitizeEvidenceHtml('<p>Tel: 0532 123 45 67, e-posta: a@b.com</p>')).toBe(
       '<p>Tel: [TELEFON], e-posta: [E-POSTA]</p>',

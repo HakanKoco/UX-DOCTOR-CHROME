@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Dolu form (etik test sayfası)</title>
+  </head>
+  <body>
+    <!-- Etik tarama fixture'ı: tüm değerler kurgusaldır ve "GIZLI-" işaretlidir. Analiz çıktısının hiçbir yerinde
+         (envanter, LLM istek gövdesi, deterministik bulgular, gizlilik sinyalleri) bu işaretler geçmemelidir. -->
+    <main>
+      <h1>Başvuru formu</h1>
+      <p>İletişim: 0532 123 45 67</p>
+      <form>
+        <label for="ad">Ad soyad</label>
+        <input id="ad" name="ad" type="text" value="GIZLI-OZNITELIK-1" />
+
+        <label for="sifre">Şifre</label>
+        <input id="sifre" name="sifre" type="password" />
+
+        <label for="not">Notunuz</label>
+        <textarea id="not" name="not">GIZLI-TEXTAREA-2</textarea>
+
+        <label for="il">İl</label>
+        <select id="il" name="il">
+          <option value="GIZLI-SECIM-DEGERI-3">Samsun</option>
+          <option value="x">Ankara</option>
+        </select>
+
+        <input type="hidden" name="belirtec" value="GIZLI-HIDDEN-4" />
+        <div contenteditable="true" aria-label="Serbest metin">GIZLI-EDITABLE-5</div>
+
+        <input id="gonder" type="submit" value="GIZLI-SUBMIT-6" />
+        <!-- Etiketsiz alan: axe bulgusu üretsin (bulgu HTML'inde değer görünmemeli). -->
+        <input id="etiketsiz" type="text" value="GIZLI-ETIKETSIZ-7" />
+      </form>
+    </main>
+    <script>
+      // Kullanıcının yazdığı değerleri taklit eder (property, attribute değil).
+      document.getElementById('ad').value = 'GIZLI-YAZILAN-8'
+      document.getElementById('sifre').value = 'GIZLI-SIFRE-9'
+      document.getElementById('not').value = 'GIZLI-YAZILAN-TEXTAREA-10'
+      document.getElementById('etiketsiz').value = 'GIZLI-YAZILAN-11'
+    </script>
+  </body>
+</html>

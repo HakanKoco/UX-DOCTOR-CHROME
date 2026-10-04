@@ -365,13 +365,38 @@ kılar.
   e-posta, IBAN, kart numarası. Envanterdeki tüm metinler ve rapordaki HTML kanıt parçaları maskelenir.
 - **Form değerleri okunmaz:** `input/textarea/select` öğelerinin `.value` değeri okunmaz; `value` attribute'u ve
   textarea/contenteditable içeriği alınmaz. `value` ile adlandırılmış düğmeler `nameSource:
-  "value-attribute-hidden"` olarak işaretlenir. Rapordaki HTML parçalarında `value="[gizlendi]"` yazılır.
+  "value-attribute-hidden"` olarak işaretlenir. Rapordaki HTML parçalarında `value="[gizlendi]"` yazılır;
+  textarea ve contenteditable içeriği `[gizlendi]` olur.
+  - **Tarayıcıda doğrulandı** (`tests/browser/ethics.test.ts`, `tests/fixtures/dolu-form.html`): her değeri
+    "GIZLI-" işaretli dolu bir formda (value attribute'u, kullanıcının yazdığını taklit eden property, textarea,
+    select, hidden, contenteditable, submit) envanter, LLM istek gövdesi (Gemini ve Claude), deterministik bulgular
+    ve gizlilik sinyallerinde hiçbir işaret geçmez. Analiz betiği hiçbir klavye/girdi olayı dinleyicisi (`keydown`,
+    `input`, `change`, `paste`…) eklemez. Kendi kodumuz (envanter, sinyaller, seçici, vurgulama) `.value`
+    okuyucusuna hiç erişmez.
+  - **axe-core istisnası (açıkça):** Deterministik katmandaki axe-core motoru, kendi kurallarını değerlendirirken
+    form denetimlerinin `.value` okuyucusuna erişir (test sayfasında 7 erişim ölçüldü). Bu okuma sayfanın izole
+    dünyasında kalır; yukarıdaki test değerlerin hiçbir çıktıya (bulgu, kanıt HTML'i, rapor) girmediğini doğrular.
+    axe'i kullanmak bu erişimi kabul etmek demektir; ödevin istediği WCAG kontrollerinin bilinen bir maliyetidir.
+  - Bu taramada bulunan ve düzeltilen açık: contenteditable bölgenin metni, axe'in "elle incelenmeli" listesindeki
+    HTML kanıtına giriyordu (LLM'e gitmiyordu ama rapor JSON'una girerdi). Artık gizleniyor (`stripValueAttributes`,
+    birim testli).
 - **Salt okunur analiz:** tıklama, form gönderme, klavye simülasyonu yok; `chrome.debugger` kullanılmaz.
 - **Vurgulama katmanı:** shadow DOM içinde, `pointer-events: none`; temizlenince tamamen kaldırılır. Analiz ve
   envanter öncesinde otomatik temizlenir, böylece sonucu etkilemez.
 - **Uzak kod yok:** CDN betiği, `eval` ve uzaktan import kullanılmaz; axe-core paketten gömülüdür.
 - **API anahtarları:** Claude ve Gemini anahtarları ayrı alanlarda tutulur. Koda gömülü değildir, repoya girmez,
-  loglanmaz, panele gönderilmez. Service worker her çağrıda storage'dan okur.
+  loglanmaz, mesajla taşınmaz. Service worker her çağrıda storage'dan okur. Yan panel ve ayarlar sayfası yalnızca
+  anahtarın kayıtlı olup olmadığını kullanır; kaydedilmiş anahtar ayarlar sayfasında geri gösterilmez (alan
+  `type="password"` ve her açılışta boş). Hata metinlerinde anahtar geçerse `[ANAHTAR]` olarak maskelenir;
+  teşhis kutusunda yalnızca kaba biçim sınıfı ve uzunluk gösterilir. Repo ve tüm commit geçmişi
+  `npm run teslim-kontrol` ile taranır.
+- **Ekran görüntüsü kanıtı (dikkat):** "Kanıt görüntüsü al" ekranda görüneni kırpar. Dolu bir form alanında
+  görünen yazı görüntüye girer. Görüntü LLM'e gitmez ama rapor JSON'una (`evidence.screenshot`) yazılır. Bu yüzden
+  kanıt görüntüsünü yalnızca herkese açık ve boş formlu sayfalarda alın; raporu `reports/`'a koymadan önce bakın.
+- **Tutarlılık testi kaydı:** Yarım kalan test için `chrome.storage.local`'de tutulan kayıt yalnızca bu cihazdadır.
+  İçinde onay ekranında gösterilen (maskelenmiş) istek gövdesi, LLM yanıtları ve yerel envanter vardır. Yerel
+  envanter sayfanın görünür metnini maskesiz içerebilir (form değeri içermez). Kayıt yeni test başlatılınca ya da
+  **Kaydı sil** ile silinir.
 - **Gemini ücretsiz katmanında veri kullanımı (etik):** Google'ın [Gemini API ek koşulları](https://ai.google.dev/gemini-api/terms)
   "Unpaid Services" için şunları söylüyor:
   - *"Google uses the content you submit to the Services and any generated responses to provide, improve, and develop
@@ -720,6 +745,9 @@ Testlerde gerçek API anahtarı ve gerçek kişisel veri kullanılmaz.
   - `known-errors.test.ts`: `bilinen-hatalar.html` sayfasındaki kasıtlı 7 hatanın hepsi yakalanır, 5 kontrol öğesinde
     yanlış alarm yoktur. Liste: `tests/fixtures/beklenen.json`. Bu, Ödev 4.b için aracın kendi kendine sınamasıdır;
     manuel karşılaştırma tablosunun yerine geçmez,
+  - `ethics.test.ts`: dolu form sayfasında hiçbir form değeri envantere, LLM gövdesine, bulgulara ve gizlilik
+    sinyallerine girmez; klavye/girdi dinleyicisi eklenmez; kendi kodumuz `.value` okumaz (bkz. "Gizlilik ve
+    güvenlik"),
   - `own-ui-a11y.test.ts`: **kendi arayüzümüz kendi kurallarımızdan geçer.** Derlenmiş yan panel ve ayarlar sayfası
     yerel bir HTTP sunucusundan açılır (`chrome.*` yalnızca testte sahte nesneyle karşılanır). Açık ve koyu temada
     eklentinin sayfalara uyguladığı axe kurallarında ihlal olmadığı, hiçbir görünür metnin 13 px'ten küçük olmadığı

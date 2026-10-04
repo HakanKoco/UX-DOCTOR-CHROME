@@ -100,8 +100,8 @@ olduğu yazılı), **Eksik**, **Öğrenci işi** (gerçek ölçüm/gözlem; değ
 | 4.d | İki testin sağlık sitesinde yapılması | — | Öğrenci işi |
 | 5 | Hassas sayfada çalışmama ya da açık onay | `src/shared/sensitivity.ts`; `sensitivity.test.ts` (üç durumlu karar, `isLocked`); `privacy.test.ts`; kilit `App.tsx` `llmLocked`; onay `reportBuilder.test.ts` "hassas sayfa onayı rapora yazılır" | Tamam (panel düzeyindeki kilidin otomatik testi yok; elle görülür) |
 | 5 | Her gönderimden önce tam JSON önizlemeli onay ekranı | `ConfirmSendDialog.tsx`; `sendLlm` yalnızca bu ekranın "Gönder" düğmesinden çağrılır | Tamam (otomatik testi yok; elle görülür) |
-| 5 | Form değerleri ve kişisel veri LLM'e gitmez, maskelenir | `src/shared/masking.ts`; `masking.test.ts`; `llm.test.ts` "kullanıcı mesajındaki envanter maskelenmiştir…"; `axeMapping.test.ts` "value attribute değerlerini gizler"; `privacy.test.ts` "yazma alanının içeriği okunmaz…" | Kısmi: dolu form alanlı sayfada envanterin `.value` içermediğini gösteren tarayıcı testi yok → bu turda madde 6 |
-| 5 | Klavye vuruşları toplanmaz | Kodda klavye dinleyicisi yok (`highlight.ts`'te yalnızca scroll/resize) | Kısmi: otomatik kanıt yok → bu turda madde 6 |
+| 5 | Form değerleri ve kişisel veri LLM'e gitmez, maskelenir | `src/shared/masking.ts`; `masking.test.ts`; `llm.test.ts` "kullanıcı mesajındaki envanter maskelenmiştir…"; `axeMapping.test.ts` "value attribute değerlerini gizler"; `privacy.test.ts` "yazma alanının içeriği okunmaz…" ; `tests/browser/ethics.test.ts` (dolu-form.html: envanter, LLM gövdesi, bulgular, sinyallerde değer yok; kendi kodumuz `.value` okumaz). Bu turda bulunan ve düzeltilen açık: contenteditable metni kanıt HTML'ine giriyordu. Bilinen istisna: axe-core içeride `.value` okur, çıktıya sızmaz (README) | Tamam |
+| 5 | Klavye vuruşları toplanmaz | Kodda klavye dinleyicisi yok (`highlight.ts`'te yalnızca scroll/resize) ; `ethics.test.ts` "analiz betiği klavye ya da girdi dinleyicisi eklemez" | Tamam |
 | 5 | API anahtarı koda gömülmez, commit edilmez | `src/shared/settings.ts` (`chrome.storage.local`); `git grep` taramasında yalnızca test kodundaki sahte değerler (`TEST-ONLY`) ; `npm run teslim-kontrol`: çalışma ağacı ve tüm commit geçmişi taranır (sk-ant-, AIza, AQ.) | Tamam |
 | 5 | Siteye otomatik form gönderimi / tıklama yok | `src/content/analyzer.ts` (salt okunur); manifest'te `debugger` yok | Tamam |
 | 5 (CLAUDE.md) | Gemini ücretsiz katman veri uyarısı onay ekranında ve README'de | `ConfirmSendDialog.tsx:70`; README "Yorumsal (LLM) katman" ve "Gizlilik ve güvenlik" | Tamam |
@@ -113,9 +113,15 @@ olduğu yazılı), **Eksik**, **Öğrenci işi** (gerçek ölçüm/gözlem; değ
 | 6 | Yansıtma notu | — | Öğrenci işi |
 | 8 | Önce küçük ve çalışan sürüm; ek özellik yok | 5 çekirdek kontrol + Norman; bu turda yeni özellik yok | Tamam |
 
-Zayıf noktaların özeti (bu turda ele alınanlar): LLM çağrısının 503'e dayanıksızlığı (madde 2), panelin kendi
-okunabilirlik kuralları (madde 3), rapor dosyalarının çalışma zamanında doğrulanmaması ve teslim taraması (madde 5),
-form değeri/klavye için tarayıcı düzeyinde kanıt (madde 6).
+Denetimde zayıf bulunan ve bu turda ele alınan noktalar:
+- LLM çağrısının 503'e dayanıksızlığı (madde 2),
+- panelin kendi okunabilirlik kuralları (madde 3),
+- rapor dosyalarının çalışma zamanında doğrulanmaması ve teslim taraması (madde 5),
+- form değeri/klavye için tarayıcı düzeyinde kanıt; contenteditable sızıntısı düzeltildi (madde 6).
+
+Satırlar düzeltmelerden sonra güncellendi. Açık kalanlar: onay ekranı, panel düzeyindeki hassas sayfa kilidi ve
+vurgulamanın otomatik testi yok (elle denetlenir); kanıt ekran görüntüsü dolu form alanındaki görünür yazıyı
+içerebilir (README "Gizlilik ve güvenlik").
 
 ## İzin yol haritası
 

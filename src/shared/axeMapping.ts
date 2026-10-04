@@ -80,7 +80,22 @@ export function wcagLabelFromTags(tags: readonly string[]): string {
  * value attribute'ları ve <textarea> içeriği (textarea'nın metni onun değeridir).
  */
 export function stripValueAttributes(html: string): string {
-  return html
-    .replace(/\svalue\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, ' value="[gizlendi]"')
-    .replace(/(<textarea\b[^>]*>)[\s\S]*?(<\/textarea>|$)/gi, '$1[gizlendi]$2')
+  return hideEditableContent(
+    html
+      .replace(/\svalue\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, ' value="[gizlendi]"')
+      .replace(/(<textarea\b[^>]*>)[\s\S]*?(<\/textarea>|$)/gi, '$1[gizlendi]$2'),
+  )
+}
+
+/**
+ * contenteditable bölgenin içeriği kullanıcının yazdığı metindir: ilk düzenlenebilir açılış etiketinden sonrası
+ * tümüyle gizlenir (iç içe öğeler regex ile güvenle eşlenemediği için fazlası da gizlenir; gizlilik öncelikli).
+ * contenteditable="false" düzenlenebilir sayılmaz.
+ */
+function hideEditableContent(html: string): string {
+  const open = /<([a-z][\w-]*)\b[^>]*\scontenteditable(?:\s*=\s*(?:"(?!false")[^"]*"|'(?!false')[^']*'|(?!false)[^\s>"']+)|(?=[\s>/]))[^>]*>/i.exec(html)
+  if (!open) return html
+  const end = open.index + open[0].length
+  const closing = `</${open[1]}>`
+  return html.slice(0, end) + '[gizlendi]' + (html.toLowerCase().endsWith(closing.toLowerCase()) ? closing : '')
 }
