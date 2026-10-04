@@ -47,7 +47,7 @@ Durum değerleri:
 | R33 | GitHub repo, anlamlı commit geçmişi (tek commit kabul edilmez) | 6 | Tümü | git | Sürekli kural (commit'ler küçük ve Conventional Commits; push: öğrenci, origin/master; Claude yalnızca commit atar) |
 | R34 | README: kurulum adımları | 6 | 7 | README.md | Tamamlandı |
 | R35 | README: mimari şema | 6 | 7 | README.md | Tamamlandı (Mermaid) |
-| R36 | README: doğrulama sonuçları bölümü iskeleti | 6 | 7 | README.md | Tamamlandı (değerler TODO: gerçek ölçüm) |
+| R36 | README: doğrulama sonuçları bölümü iskeleti | 6 | 7 | README.md | Tamamlandı (değerler ölçüm yer tutucusu olarak boş) |
 | R37 | README: doğrulama sonuçlarının gerçek değerleri | 6 | — | README.md | Öğrenci |
 | R38 | README: bilinen sınırlamalar | 6 | 7 | README.md | Tamamlandı |
 | R39 | 3 sitenin JSON raporları `/reports` klasöründe | 6 | — | reports/ | Öğrenci |
@@ -61,6 +61,62 @@ Durum değerleri:
 | R47 | Tarayıcı testleri (yeni bağımlılık yok; başsız Chrome + CDP yalnızca test aracında) | 4 (doğrulama altyapısı) | ek | tests/browser, vitest.browser.config.ts | Tamamlandı (npm run test:browser) |
 | R48 | Bilinen hatalarla dolu test sayfası ve beklenen sonuç listesi | 4.b (altyapı) | ek | tests/fixtures/bilinen-hatalar.html, tests/fixtures/beklenen.json | Tamamlandı (7 kasıtlı hata yakalanıyor, 5 kontrol öğesinde yanlış alarm yok; manuel tablo öğrencide) |
 | R49 | Sayfa çevirisi tespiti ve raporda not | (tekrarlanabilirlik) | ek | src/shared/translation.ts, src/content/selector.ts | Tamamlandı (sezgisel; resmi doküman bulunamadı) |
+
+## Teslim öncesi denetim (ODEV.md madde madde)
+
+Tarih: 2026-10-04. Bu tablodaki her kanıt bu turda gerçekten açılıp çalıştırıldı:
+`npm run build` (çıkış 0), `npx tsc --noEmit -p tsconfig.app.json` (çıkış 0), `npm test` (16 dosya, 212 test geçti),
+`npm run test:browser` (3 dosya, 20 test geçti). Test adları dosyadaki `describe` / `it` metinleridir.
+
+Durum: **Tamam** (kod + otomatik kanıt), **Kısmi** (kod var ama zayıf ya da yalnızca elle doğrulanabilir; ne eksik
+olduğu yazılı), **Eksik**, **Öğrenci işi** (gerçek ölçüm/gözlem; değer burada yazılmaz).
+
+| Ödev | Gereksinim | Kanıt | Durum |
+|---|---|---|---|
+| 2 | Chrome Extension, Manifest V3 | `manifest.config.ts` (`manifest_version: 3`); `npm run build` → `dist/manifest.json` | Tamam |
+| 2.a | axe-core ile WCAG 2.2 AA | `src/content/axeRunner.ts` (`runOnly` etiketleri); `tests/browser/known-errors.test.ts` "bilinen-hatalar.html" | Tamam |
+| 2.a | Kontrast, alt metin, etiketsiz alan, 24x24 hedef, sayfa dili | `src/shared/axeMapping.ts`; `axeMapping.test.ts` "çekirdek kuralları kategorilere eşler"; `known-errors.test.ts` 7 kasıtlı hata yakalanır, 5 kontrol öğesinde yanlış alarm yok | Tamam |
+| 2.a | `incomplete` ihlal sayılmaz, ayrı listelenir | `axeRunner.ts` (`results.incomplete` → `manualReview`); `src/sidepanel/ManualReviewList.tsx` | Tamam (otomatik testi yok; elle görülür) |
+| 2.b | LLM ile Norman'ın 6 ilkesi | `src/shared/rubric.ts`; `llm.test.ts` "rubrik her ilke için 4-6 soru içerir", "yapılandırılmış çıktı şeması gönderilir" | Tamam |
+| 2.b | Envanterde olmayan kimlik halüsinasyon sayılır | `src/shared/llmValidate.ts`; `llm.test.ts` "envanterde olmayan kimlik halüsinasyon sayılır ve kanıttan düşülür"; `llmRobustness.test.ts` | Tamam |
+| 2.b | LLM çağrısının gerçek koşulda tamamlanması | Gemini ücretsiz katmanında sürekli 503: tek analizde yeniden deneme yoktu (`src/sidepanel/App.tsx` `sendLlm` → `callLlm`), tutarlılık testinde 4 deneme vardı ve ilerleme yalnızca bellekteydi | Kısmi → bu turda madde 2 |
+| 2 Skor | Her ilke/kategori için 0-100 alt skor | `src/scoring/score.ts`; `score.test.ts` "(d) çok sayıda Kritik ihlalde bile 0-100 aralığında kalır…" | Tamam |
+| 2 Skor | Ağırlıklı toplam skor | `src/scoring/weights.ts`; `score.test.ts` "Toplam = 0.6 × deterministik + 0.4 × LLM" | Tamam |
+| 2 Skor | Formül README'de ve gerekçeli | README "Skor formülü ve gerekçesi" | Tamam (gerçek sitelerde kalibrasyonu bu turda madde 4'te ölçülüyor) |
+| 2 Skor | Deterministik ve LLM skorları ayrı | `src/sidepanel/ScoreSummary.tsx`; rapor `scores.deterministic` / `scores.llm` | Tamam |
+| 2 Bulgu | CSS seçici | `src/content/selector.ts`; `selector.test.ts` "tüm bulgu seçicileri sayfada tek öğe bulur…" | Tamam |
+| 2 Bulgu | Vurgulama ya da ekran görüntüsü | `src/content/highlight.ts` (`pointer-events:none`, kapalı shadow DOM, temizlenir); `src/sidepanel/screenshot.ts` | Tamam (otomatik testi yok; elle görülür) |
+| 2 Bulgu | Kural/ilke, şiddet, somut düzeltme | `src/shared/axeTemplates.ts`; `axeTemplates.test.ts` "eklentinin çalıştırdığı her kural için öneri boş değil, Türkçe…"; `known-errors.test.ts` (fix > 20 karakter, Türkçe) | Tamam |
+| 2 Rapor | Panelde görüntülenir | `src/sidepanel/App.tsx`, `FindingList.tsx`, `TopIssues.tsx` | Tamam (yazı boyutu ve kendi axe kontrolü bu turda madde 3) |
+| 2 Rapor | JSON dışa aktarma | `src/shared/reportBuilder.ts`; `reportBuilder.test.ts` "LLM olmadan rapor kurar…"; `src/sidepanel/download.ts` | Kısmi: şema yalnızca TypeScript tipi, dosyaları denetleyen çalışma zamanı doğrulayıcı yok → bu turda madde 5 |
+| 3 | 3 site (sağlık, Türk e-ticaret, kamu) | `reports/` içinde yalnızca `README.md` var | Öğrenci işi |
+| 4.a | Tutarlılık aracı (N ≥ 3, ort./std/min-max, JSON) | `src/shared/validationExports.ts`, `src/scoring/stats.ts`; `validationExports.test.ts` "ilke başına istatistik, eşik ve soru uyumu üretir"; `scripts/tutarlilik-tablosu.mjs` | Kısmi: 503'te yarım kalan test kaybolur → bu turda madde 2 |
+| 4.a | Tutarlılık ölçümü ve > 10 puan açıklaması | — | Öğrenci işi |
+| 4.b | Manuel karşılaştırma şablonu | `docs/manuel-karsilastirma.md`; altyapı: `tests/fixtures/bilinen-hatalar.html`, `beklenen.json` | Tamam (şablon) |
+| 4.b | Klavye + ekran okuyucu denetimi ve tablo | — | Öğrenci işi |
+| 4.c | Otomatik halüsinasyon kontrolü + elle doğrulama dışa aktarımı | `llmValidate.ts`; `src/sidepanel/llmClient.ts` (`checkSelectors`); `validationExports.test.ts` "her LLM bulgusu için "gerçek mi?" alanı boş bırakılır"; `scripts/halusinasyon-orani.mjs` | Tamam |
+| 4.c | Halüsinasyon oranının ölçülmesi | — | Öğrenci işi |
+| 4.d | Büyükanne ve Gece 3 şablonları | `docs/buyukanne-testi.md`, `docs/gece-3-acil-durum-testi.md` | Tamam (şablon) |
+| 4.d | İki testin sağlık sitesinde yapılması | — | Öğrenci işi |
+| 5 | Hassas sayfada çalışmama ya da açık onay | `src/shared/sensitivity.ts`; `sensitivity.test.ts` (üç durumlu karar, `isLocked`); `privacy.test.ts`; kilit `App.tsx` `llmLocked`; onay `reportBuilder.test.ts` "hassas sayfa onayı rapora yazılır" | Tamam (panel düzeyindeki kilidin otomatik testi yok; elle görülür) |
+| 5 | Her gönderimden önce tam JSON önizlemeli onay ekranı | `ConfirmSendDialog.tsx`; `sendLlm` yalnızca bu ekranın "Gönder" düğmesinden çağrılır | Tamam (otomatik testi yok; elle görülür) |
+| 5 | Form değerleri ve kişisel veri LLM'e gitmez, maskelenir | `src/shared/masking.ts`; `masking.test.ts`; `llm.test.ts` "kullanıcı mesajındaki envanter maskelenmiştir…"; `axeMapping.test.ts` "value attribute değerlerini gizler"; `privacy.test.ts` "yazma alanının içeriği okunmaz…" | Kısmi: dolu form alanlı sayfada envanterin `.value` içermediğini gösteren tarayıcı testi yok → bu turda madde 6 |
+| 5 | Klavye vuruşları toplanmaz | Kodda klavye dinleyicisi yok (`highlight.ts`'te yalnızca scroll/resize) | Kısmi: otomatik kanıt yok → bu turda madde 6 |
+| 5 | API anahtarı koda gömülmez, commit edilmez | `src/shared/settings.ts` (`chrome.storage.local`); `git grep` taramasında yalnızca test kodundaki sahte değerler (`TEST-ONLY`) | Tamam (otomatik tarama bu turda madde 5) |
+| 5 | Siteye otomatik form gönderimi / tıklama yok | `src/content/analyzer.ts` (salt okunur); manifest'te `debugger` yok | Tamam |
+| 5 (CLAUDE.md) | Gemini ücretsiz katman veri uyarısı onay ekranında ve README'de | `ConfirmSendDialog.tsx:70`; README "Yorumsal (LLM) katman" ve "Gizlilik ve güvenlik" | Tamam |
+| 6 | Anlamlı commit geçmişi | `git log`: 41 commit; önekler feat 11, fix 8, docs 8, chore 7, test 7 | Tamam |
+| 6 | README: kurulum, skor formülü, mimari şema, sınırlamalar | README "Kurulum", "Skor formülü ve gerekçesi", "Mimari" (1 Mermaid bloğu), "Bilinen sınırlamalar" | Tamam |
+| 6 | README: doğrulama sonuçları | README "Doğrulama (Ödev Bölüm 4)" iskeleti; 21 ölçüm yer tutucusu | Öğrenci işi |
+| 6 | 3 sitenin JSON raporları `/reports`'ta | — | Öğrenci işi |
+| 6 | Demo videosu | — | Öğrenci işi |
+| 6 | Yansıtma notu | — | Öğrenci işi |
+| 8 | Önce küçük ve çalışan sürüm; ek özellik yok | 5 çekirdek kontrol + Norman; bu turda yeni özellik yok | Tamam |
+
+Zayıf noktaların özeti (bu turda ele alınanlar): LLM çağrısının 503'e dayanıksızlığı (madde 2), panelin kendi
+okunabilirlik kuralları (madde 3), rapor dosyalarının çalışma zamanında doğrulanmaması ve teslim taraması (madde 5),
+form değeri/klavye için tarayıcı düzeyinde kanıt (madde 6).
+
 ## İzin yol haritası
 
 İzinler yalnızca kullanıldıkları fazda manifest'e eklendi. Gerekçeler README "İzinler ve gerekçeleri" bölümünde.
