@@ -140,6 +140,15 @@ içerebilir (README "Gizlilik ve güvenlik").
 
 Bilerek **kullanılmayan**: `content_scripts` (her sayfaya otomatik enjeksiyon yok), geniş `host_permissions`, `debugger`, `tabs`, `contentSettings`, `downloads` (dışa aktarma `<a download>` ile yapılır). Derleme sırasında CRXJS'in eklediği `web_accessible_resources` kaydı vite.config.ts içindeki eklentiyle silinir (sayfalar eklentiyi tespit edemesin).
 
+## Karar bekliyor: üç gerçek rapor sonrası k değerlendirmesi
+
+Karar (2026-10-04, öğrenci): skor-v2 (k = 25) değiştirilmeden kalır. Üç gerçek site raporu (`reports/saglik-*`,
+`eticaret-*`, `kamu-*`) çıktıktan sonra deterministik skor dağılımına bakılır. Siteler 0-20 aralığına yığılıyorsa
+k (ör. 40) ya da toplama yöntemi yeniden değerlendirilir. Değişiklik olursa `FORMULA_VERSION` artırılır ve README
+"Skor formülü" güncellenir. k'yı değiştirmek sitelerin sıralamasını değiştirmez, yalnızca puanların yayılımını
+değiştirir. Kategori ortalaması önerilmedi: altı kategorisinin hepsinde ihlal olan test sayfasını 85,8'e
+çıkarıp sorunları gizliyor (araç tarafı ölçüm, test sayfaları üzerinde; gerçek site değeri değildir).
+
 ## Doğrulama notu (araç tarafı)
 
 Araç, bu repoda olmayan bir uçtan uca test düzeniyle (Chrome for Testing + CDP; sahte API anahtarı, yakalanan ve
