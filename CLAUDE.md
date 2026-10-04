@@ -27,7 +27,7 @@ Gereksinim takibi: docs/GEREKSINIMLER.md (her fazda güncellenir).
 
 ## Kesin yasaklar (ödevde ihlali notu sıfırlıyor)
 - API anahtarı hiçbir dosyaya yazılmaz, loglanmaz, commit edilmez. Test kodunda bile gerçek anahtar olmaz.
-- input/textarea/select öğelerinin `.value` değeri okunmaz; `value` attribute'u LLM'e gönderilmez.
+- input/textarea/select öğelerinin `.value` değerini kendi kodumuz okumaz; axe-core kural kontrolünde erişir, değer hiçbir çıktıya girmez (tests/browser/ethics.test.ts). `value` attribute'u LLM'e gönderilmez.
 - Analiz salt okunurdur: tıklama, form gönderme, klavye simülasyonu yok; `chrome.debugger` kullanılmaz.
 - Vurgulama katmanı sayfanın davranışını değiştirmez (`pointer-events: none`, sayfa DOM'una kalıcı müdahale yok).
 - Uzak kod yok: CDN script, `eval`, uzaktan import kullanılmaz. axe-core paketten gömülür.
