@@ -93,7 +93,8 @@ export default function ConfirmSendDialog({
           <p className="muted">
             {runs > 1 && runIntervalMs > 0 && <>Çalıştırmalar arasında {runIntervalMs / 1000} sn beklenir. </>}
             İstek sınırı (429) ya da geçici kullanılamama (503) hatasında aynı istek, panelde geri sayımla ve üstel
-            beklemeyle en çok {maxRetries} kez yeniden gönderilir; "Durdur" ile istediğiniz an kesebilirsiniz.
+            beklemeyle en çok {maxRetries} kez yeniden gönderilir (Google bir bekleme önerirse o kullanılır; günlük kota
+            dolduysa hiç yeniden denenmez); "Durdur" ile istediğiniz an kesebilirsiniz.
           </p>
           <p className="muted">
             Adres: <code>{transport.url}</code>. API anahtarı bu gövdede ve adreste yoktur; <code>{transport.keyHeader}</code>{' '}

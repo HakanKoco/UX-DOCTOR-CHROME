@@ -162,7 +162,7 @@ export interface LlmRunRecord {
   /** Claude: stop_reason; Gemini: finishReason. */
   stopReason: string | null
   durationMs: number
-  usage: { inputTokens: number; outputTokens: number; cacheReadInputTokens: number | null } | null
+  usage: LlmUsage | null
   /** Ham LLM yanıt metni (yapılandırılmış JSON). */
   rawResponse: string
 }
@@ -330,4 +330,15 @@ export function validateReport(value: unknown): string[] {
     if (!isObj(r.scores.layerWeights) || !isNumOrNull(r.scores.layerWeights.deterministic)) errors.push('scores.layerWeights: geçersiz')
   }
   return errors
+}
+
+/**
+ * Bir LLM çağrısının token kullanımı. outputTokens düşünme token'larını da içerir (Claude ile karşılaştırılabilirlik);
+ * thinkingTokens Gemini'de ayrıca yazılır (usageMetadata.thoughtsTokenCount). Kaynak: ai.google.dev/api/generate-content
+ */
+export interface LlmUsage {
+  inputTokens: number
+  outputTokens: number
+  cacheReadInputTokens: number | null
+  thinkingTokens?: number | null
 }

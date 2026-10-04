@@ -265,6 +265,23 @@ sınırlarını dokümanda yayımlamıyor ("can be viewed in Google AI Studio").
   çok **6 kez** yeniden gönderilir: 5 s, 10 s, 20 s, 40 s, 80 s, 120 s, her birine 0-1 s rastgele sapma eklenir
   (toplam en çok ≈ 4,6 dk). Bu, dokümandaki örnekten (SDK: 4 deneme, en çok 60 s) uzundur; bekleme panelde
   "yeniden deneniyor (2/6), sonraki deneme X sn sonra" diye görünür ve **Durdur** ile kesilebilir.
+- **429 ayrıntısı okunur** (`parseQuotaInfo`, `retryDecision`; kurgulanmış gövdelerle birim testli):
+  - Google'ın hata gövdesindeki `google.rpc.QuotaFailure` (`violations[].quotaId / quotaMetric / quotaValue`) ve
+    `google.rpc.RetryInfo` (`retryDelay`, ör. `"38s"`) alanları ayrıştırılır. Biçimin kaynağı:
+    [error_details.proto](https://github.com/googleapis/googleapis/blob/master/google/rpc/error_details.proto) ve
+    [ProtoJSON](https://protobuf.dev/programming-guides/json/).
+  - Kota türü (dakikalık istek RPM, dakikalık token TPM, günlük RPD) `quotaId`/`quotaMetric` metnindeki kalıptan
+    **sezgisel** çıkarılır. Gemini dokümanı bu adları yayımlamıyor; kalıp tanınmazsa "türü tanınmayan kota" yazılır.
+  - **Günlük kota** dolduysa hiç yeniden denenmez. Panel, Pasifik gece yarısındaki sıfırlanmayı Türkiye saatiyle
+    yazar ("RPD quotas reset at midnight Pacific time", [rate-limits](https://ai.google.dev/gemini-api/docs/rate-limits)).
+  - **Dakikalık kota**da Google `retryDelay` verdiyse o kadar beklenir; 10 dakikayı aşıyorsa beklenmez, durulur.
+    `retryDelay` yoksa yukarıdaki üstel bekleme kullanılır.
+  - Teşhis kutusunda kota türü, `quotaId`, `quotaMetric`, `quotaValue` ve önerilen bekleme gösterilir; anahtar hiçbir
+    satırda yer almaz.
+- Her çalıştırmada girdi, çıktı ve (Gemini'de) **düşünme** token sayısı panelde ve çalıştırma kaydında
+  (`usage.thinkingTokens`) görünür. Google'a göre TPM girdi token'larını sayar ("Tokens per minute (input)").
+- **"Anahtarı doğrula"** `models.get` çağırır: içerik üretmez, token harcamaz. Bu çağrının istek kotasına sayılıp
+  sayılmadığı dokümanda yazmıyor; doğrulanmadı. Düğmeyi yalnızca anahtar değiştiğinde kullanın.
 - Gemini tutarlılık testinde çalıştırmalar arasında **15 sn** beklenir (geri sayımlı). Claude'da bu bekleme yoktur.
 - Diğer hatalar (400, 403, 404) yeniden denenmez.
 - Yeniden deneme sayısı çalıştırma kaydına (`retries`) ve tutarlılık dışa aktarımına (`pacing`) yazılır.

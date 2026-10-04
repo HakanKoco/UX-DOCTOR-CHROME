@@ -23,7 +23,7 @@ describe('parseGeminiResponse', () => {
       rawText: '{"answers":[]}',
       servedModel: 'gemini-3.8-flash-001',
       stopReason: 'STOP',
-      usage: { inputTokens: 1000, outputTokens: 250, cacheReadInputTokens: null },
+      usage: { inputTokens: 1000, outputTokens: 250, cacheReadInputTokens: null, thinkingTokens: 50 },
     })
   })
 

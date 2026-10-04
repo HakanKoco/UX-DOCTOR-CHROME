@@ -1,6 +1,7 @@
 // Gemini generateContent yanıtının ve hata gövdesinin yorumlanması (saf fonksiyonlar, birim testli).
 // Kaynak: https://ai.google.dev/api/generate-content (GenerateContentResponse, Candidate, FinishReason,
 // PromptFeedback.BlockReason, UsageMetadata) — 2026-10-03'te kontrol edildi.
+import type { LlmUsage } from './report'
 
 export interface GeminiParsedSuccess {
   ok: true
@@ -9,7 +10,7 @@ export interface GeminiParsedSuccess {
   servedModel: string
   /** candidates[0].finishReason */
   stopReason: string | null
-  usage: { inputTokens: number; outputTokens: number; cacheReadInputTokens: number | null } | null
+  usage: LlmUsage | null
 }
 
 export interface GeminiParsedFailure {
@@ -81,6 +82,7 @@ export function parseGeminiResponse(data: unknown, requestedModel: string): Gemi
           inputTokens: u.promptTokenCount ?? 0,
           outputTokens: (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0),
           cacheReadInputTokens: u.cachedContentTokenCount ?? null,
+          thinkingTokens: u.thoughtsTokenCount ?? null,
         }
       : null,
   }
@@ -113,6 +115,139 @@ export interface GeminiDiagnostics extends GoogleErrorInfo {
   model: string
   keyShape: KeyShape | null
   keyLength: number | null
+  /** 429'da Google'ın kota ayrıntısı (QuotaFailure / RetryInfo); yoksa null. */
+  quota?: QuotaInfo | null
+}
+
+// --- 429 kota ayrıntısı ---
+// Biçim (doğrulandı): google/rpc/error_details.proto — QuotaFailure.Violation { subject, description, api_service,
+// quota_metric, quota_id, quota_dimensions, quota_value (int64), future_quota_value } ve RetryInfo { retry_delay
+// (Duration) }. ProtoJSON: alan adları lowerCamelCase, int64 metin ("250"), Duration "38s" / "1.500s"
+// (https://protobuf.dev/programming-guides/json/). @type: "type.googleapis.com/google.rpc.QuotaFailure" | "...RetryInfo".
+// Gemini dokümanı 429 gövdesinin örneğini ve quotaId adlandırmasını YAYIMLAMIYOR (rate-limits ve troubleshooting
+// sayfaları, 2026-10-04). Bu yüzden kotanın türü quotaId/quotaMetric metnindeki kalıplardan SEZGİSEL çıkarılır;
+// kalıp tanınmazsa "unknown" döner ve tahmin yürütülmez.
+
+/** rpd: günlük kota (istek ya da token; aynı gün yeniden denemek anlamsız); rpm: dakikalık istek; tpm: dakikalık (girdi) token; unknown: tanınmadı. */
+export type QuotaKind = 'rpd' | 'rpm' | 'tpm' | 'unknown'
+
+export interface QuotaInfo {
+  kind: QuotaKind
+  quotaId: string | null
+  quotaMetric: string | null
+  quotaValue: string | null
+  /** RetryInfo.retryDelay (ms); Google önermediyse null. */
+  retryDelayMs: number | null
+}
+
+const QUOTA_KIND_PRIORITY: QuotaKind[] = ['rpd', 'tpm', 'rpm', 'unknown']
+
+export const QUOTA_KIND_LABELS: Record<QuotaKind, string> = {
+  rpd: 'günlük kota (RPD; günlük token sınırı da bu sınıfa girer)',
+  rpm: 'dakikalık istek kotası (RPM)',
+  tpm: 'dakikalık token kotası (TPM)',
+  unknown: 'türü tanınmayan kota',
+}
+
+/** "38s", "1.500s" → ms. Geçersizse null. */
+export function parseDurationMs(value: unknown): number | null {
+  if (typeof value !== 'string') return null
+  const m = /^(\d+(?:\.\d+)?)s$/.exec(value.trim())
+  return m ? Math.round(Number(m[1]) * 1000) : null
+}
+
+export function classifyQuota(quotaId: string | null, quotaMetric: string | null): QuotaKind {
+  const text = `${quotaId ?? ''} ${quotaMetric ?? ''}`
+  if (/per\s*day|perday|daily|_day\b/i.test(text)) return 'rpd'
+  if (/token/i.test(text)) return 'tpm'
+  if (/per\s*minute|perminute|_minute\b|requests?/i.test(text)) return 'rpm'
+  return 'unknown'
+}
+
+type Detail = Record<string, unknown>
+
+/** 429 gövdesinden kota ayrıntısı; QuotaFailure ya da RetryInfo yoksa null. */
+export function parseQuotaInfo(body: unknown): QuotaInfo | null {
+  const details = (body as { error?: { details?: unknown } } | null)?.error?.details
+  if (!Array.isArray(details)) return null
+  const typed = details.filter((d): d is Detail => typeof d === 'object' && d !== null)
+  const ofType = (suffix: string) => typed.filter((d) => typeof d['@type'] === 'string' && (d['@type'] as string).endsWith(suffix))
+  const retry = ofType('google.rpc.RetryInfo')[0]
+  const violations = ofType('google.rpc.QuotaFailure').flatMap((d) =>
+    Array.isArray(d.violations) ? (d.violations as unknown[]).filter((v): v is Detail => typeof v === 'object' && v !== null) : [],
+  )
+  if (!retry && violations.length === 0) return null
+
+  const str = (v: unknown) => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : null)
+  const parsed = violations.map((v) => {
+    const quotaId = str(v.quotaId)
+    const quotaMetric = str(v.quotaMetric)
+    return { kind: classifyQuota(quotaId, quotaMetric), quotaId, quotaMetric, quotaValue: str(v.quotaValue) }
+  })
+  // Birden çok ihlal varsa en kısıtlayıcısı (günlük > token > istek) esas alınır.
+  parsed.sort((a, b) => QUOTA_KIND_PRIORITY.indexOf(a.kind) - QUOTA_KIND_PRIORITY.indexOf(b.kind))
+  const top = parsed[0]
+  return {
+    kind: top?.kind ?? 'unknown',
+    quotaId: top?.quotaId ?? null,
+    quotaMetric: top?.quotaMetric ?? null,
+    quotaValue: top?.quotaValue ?? null,
+    retryDelayMs: parseDurationMs(retry?.retryDelay),
+  }
+}
+
+/** Bir anın verilen saat dilimindeki UTC farkı (dk). */
+function tzOffsetMinutes(at: number, timeZone: string): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+      .formatToParts(at)
+      .map((p) => [p.type, p.value]),
+  )
+  const asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second)
+  return Math.round((asUtc - Math.floor(at / 1000) * 1000) / 60000)
+}
+
+/**
+ * Günlük kotanın sıfırlanacağı an: bir sonraki Pasifik gece yarısı ("RPD quotas reset at midnight Pacific time",
+ * ai.google.dev/gemini-api/docs/rate-limits). Yaz/kış saati Intl ile çalışma anında hesaplanır.
+ */
+export function nextPacificMidnight(now: number): number {
+  const tz = 'America/Los_Angeles'
+  const local = new Date(now + tzOffsetMinutes(now, tz) * 60000)
+  let target = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate() + 1) - tzOffsetMinutes(now, tz) * 60000
+  // Gece yarısı ile şimdi arasında saat değişimi olduysa farkı hedef anda yeniden hesapla.
+  target = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate() + 1) - tzOffsetMinutes(target, tz) * 60000
+  return target
+}
+
+/** Türkiye saatiyle okunur biçim, ör. "5 Ekim 10:00". */
+export function formatTurkeyTime(at: number): string {
+  return new Intl.DateTimeFormat('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(at)
+}
+
+/** 429 için Türkçe teşhis metni (anahtar içermez). */
+export function describeQuota(quota: QuotaInfo, now: number = Date.now()): string {
+  const limit = quota.quotaValue ? ` (sınır: ${quota.quotaValue})` : ''
+  if (quota.kind === 'rpd') {
+    return `Günlük ücretsiz kota doldu${limit}. Pasifik saatiyle gece yarısı sıfırlanır (Türkiye saatiyle ${formatTurkeyTime(nextPacificMidnight(now))}). Yeniden denenmeyecek; boşuna istek harcanmaz.`
+  }
+  const wait = quota.retryDelayMs !== null ? ` Google ${Math.ceil(quota.retryDelayMs / 1000)} sn beklemeyi öneriyor.` : ''
+  return `${QUOTA_KIND_LABELS[quota.kind][0].toUpperCase()}${QUOTA_KIND_LABELS[quota.kind].slice(1)} doldu${limit}.${wait}`
 }
 
 export function maskKey(text: string, apiKey?: string): string {
@@ -151,6 +286,7 @@ export function buildGeminiDiagnostics(input: {
     model: input.model,
     keyShape: input.apiKey ? keyShape(input.apiKey) : null,
     keyLength: input.apiKey ? input.apiKey.length : null,
+    quota: input.httpStatus === 429 ? parseQuotaInfo(input.body) : null,
   }
 }
 
@@ -177,8 +313,12 @@ export function describeGeminiHttpError(status: number, body: unknown, apiKey?: 
       return `Erişim reddedildi (403${code}). Anahtar eksik ya da bu modele/API'ye erişim izni yok${g.reason ? ` (neden: ${g.reason})` : ''}.`
     case 404:
       return `Model bulunamadı (404). Ayarlardan başka bir model seçin.`
-    case 429:
-      return `İstek sınırına takıldınız (429${code}). Ücretsiz katman sınırlarınızı Google AI Studio'da görebilirsiniz.`
+    case 429: {
+      const quota = parseQuotaInfo(body)
+      return quota
+        ? `İstek sınırına takıldınız (429${code}). ${describeQuota(quota)}`
+        : `İstek sınırına takıldınız (429${code}). Google kota ayrıntısı göndermedi; sınırlarınızı AI Studio'da (aistudio.google.com/rate-limit) görebilirsiniz.`
+    }
     case 503:
       return `Gemini API geçici olarak kullanılamıyor (503${code}).`
     default:
@@ -196,5 +336,14 @@ export function diagnosticsRows(d: GeminiDiagnostics): [string, string][] {
     ['Uç nokta yolu', d.endpointPath],
     ['Model', d.model],
     ['Anahtar biçimi', d.keyShape ? `${d.keyShape}, ${d.keyLength} karakter` : '—'],
+    ...(d.quota
+      ? ([
+          ['Kota türü', QUOTA_KIND_LABELS[d.quota.kind]],
+          ['quotaId', d.quota.quotaId ?? '—'],
+          ['quotaMetric', d.quota.quotaMetric ?? '—'],
+          ['quotaValue', d.quota.quotaValue ?? '—'],
+          ['Önerilen bekleme', d.quota.retryDelayMs !== null ? `${Math.ceil(d.quota.retryDelayMs / 1000)} sn` : '—'],
+        ] as [string, string][])
+      : []),
   ]
 }

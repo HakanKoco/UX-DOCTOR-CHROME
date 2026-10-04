@@ -51,6 +51,7 @@ export default function LlmDetails({ llm }: { llm: LlmResult }) {
             <>
               {' '}
               · {llm.run.usage.inputTokens} girdi / {llm.run.usage.outputTokens} çıktı token
+              {llm.run.usage.thinkingTokens != null && <> (bunun {llm.run.usage.thinkingTokens} kadarı düşünme)</>}
             </>
           )}
         </p>

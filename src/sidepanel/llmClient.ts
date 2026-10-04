@@ -1,11 +1,11 @@
 // Yan panelden LLM analizi: service worker'a port üzerinden isteği gönderir, yanıtı doğrular.
-import type { GeminiDiagnostics } from '@/shared/geminiResponse'
+import { QUOTA_KIND_LABELS, type GeminiDiagnostics } from '@/shared/geminiResponse'
 import type { Inventory } from '@/shared/inventory'
 import { requestParameters, type LlmRequest } from '@/shared/llmRequest'
 import { LlmResponseError, evaluateAnswers, parseLlmResponse, type EvaluatedAnswers } from '@/shared/llmValidate'
 import { LLM_PORT_NAME, type LlmCallSuccess, type LlmPortRequest, type LlmPortResponse } from '@/shared/messages'
 import type { LlmResult } from '@/shared/report'
-import { MAX_RETRIES, isRetryableStatus, remainingSeconds, retryDelayMs, shouldRetry } from '@/shared/retry'
+import { MAX_RETRIES, isRetryableStatus, remainingSeconds, retryDecision } from '@/shared/retry'
 import { PROMPT_VERSION } from '@/shared/rubric'
 import { callContent } from './tabBridge'
 
@@ -100,11 +100,16 @@ export interface RetryState {
   maxRetries: number
   secondsLeft: number
   status: number | undefined
+  /** server: Google'ın RetryInfo önerisi; exponential: kendi üstel beklememiz. */
+  basis: 'server' | 'exponential'
+  /** 429'da kota türünün Türkçe adı (ör. "dakikalık istek kotası (RPM)"). */
+  quotaLabel: string | null
 }
 
 /**
- * 429/503(/529) hatalarında üstel bekleme ile yeniden dener (src/shared/retry.ts); tek analizde ve tutarlılık
- * testinde kullanılır. Diğer hatalar hemen yukarı iletilir. onWait bekleme sırasında saniyede bir çağrılır
+ * 429/503(/529) hatalarında yeniden dener (karar: src/shared/retry.ts retryDecision); tek analizde ve tutarlılık
+ * testinde kullanılır. Günlük kota dolduysa yeniden denenmez (hata hemen yukarı iletilir). Google bir bekleme
+ * süresi önerdiyse (RetryInfo) o kullanılır, yoksa üstel bekleme. onWait bekleme sırasında saniyede bir çağrılır
  * (panelde "yeniden deneniyor (2/6), sonraki deneme X sn sonra"). signal ile bekleme iptal edilir.
  * Bekleme yan panelde yapılır; service worker her denemede yeni bir port bağlantısıyla uyandırılır.
  */
@@ -118,11 +123,16 @@ export async function callLlmWithRetry(
     try {
       return { call: await callLlm(request), retries }
     } catch (e) {
-      if (!(e instanceof LlmCallError) || !shouldRetry(e.status, retries)) throw e
+      if (!(e instanceof LlmCallError)) throw e
+      const quota = e.diagnostics?.quota ?? null
+      const decision = retryDecision(e.status, quota, retries)
+      if (!decision.retry) throw e
       const attempt = retries + 1
+      const quotaLabel = quota ? QUOTA_KIND_LABELS[quota.kind] : null
       await waitWithCountdown(
-        retryDelayMs(attempt),
-        (secondsLeft) => onWait({ attempt, maxRetries: MAX_RETRIES, secondsLeft, status: e.status }),
+        decision.delayMs,
+        (secondsLeft) =>
+          onWait({ attempt, maxRetries: MAX_RETRIES, secondsLeft, status: e.status, basis: decision.basis, quotaLabel }),
         signal,
       )
     }

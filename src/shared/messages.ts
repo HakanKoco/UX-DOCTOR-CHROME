@@ -2,6 +2,7 @@
 import type { GeminiDiagnostics } from './geminiResponse'
 import type { LlmRequest } from './llmRequest'
 import type { Provider } from './models'
+import type { LlmUsage } from './report'
 
 export interface VerifyKeyRequest {
   type: 'verify-key'
@@ -54,7 +55,7 @@ export interface LlmCallSuccess {
   fallbackUsed: boolean
   stopReason: string | null
   durationMs: number
-  usage: { inputTokens: number; outputTokens: number; cacheReadInputTokens: number | null } | null
+  usage: LlmUsage | null
 }
 
 export interface LlmCallFailure {

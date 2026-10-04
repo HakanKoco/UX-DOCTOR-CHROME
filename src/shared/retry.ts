@@ -41,6 +41,35 @@ export function shouldRetry(status: number | undefined, retriesSoFar: number): b
   return isRetryableStatus(status) && retriesSoFar < MAX_RETRIES
 }
 
+/** Google'ın önerdiği bekleme bundan uzunsa beklenmez; kullanıcıya söylenip durulur (panel saatlerce bekletilmez). */
+export const MAX_SERVER_RETRY_DELAY_MS = 10 * 60_000
+
+export type RetryDecision =
+  | { retry: true; delayMs: number; basis: 'server' | 'exponential' }
+  | { retry: false; reason: 'not-retryable' | 'exhausted' | 'daily-quota' | 'delay-too-long' }
+
+/**
+ * Yeniden deneme kararı (429 kota ayrıntısını dikkate alır; ayrıntı src/shared/geminiResponse.ts parseQuotaInfo):
+ * - günlük kota (rpd): aynı gün yeniden denemek kotayı daha da harcar → durulur,
+ * - Google RetryInfo.retryDelay verdiyse o kadar (+ 0–1 s sapma) beklenir; 10 dk'yı aşıyorsa durulur,
+ * - aksi halde mevcut üstel bekleme (5 s … 120 s).
+ */
+export function retryDecision(
+  status: number | undefined,
+  quota: { kind: string; retryDelayMs: number | null } | null | undefined,
+  retriesSoFar: number,
+  random: () => number = Math.random,
+): RetryDecision {
+  if (!isRetryableStatus(status)) return { retry: false, reason: 'not-retryable' }
+  if (status === 429 && quota?.kind === 'rpd') return { retry: false, reason: 'daily-quota' }
+  if (retriesSoFar >= MAX_RETRIES) return { retry: false, reason: 'exhausted' }
+  if (status === 429 && quota?.retryDelayMs != null) {
+    if (quota.retryDelayMs > MAX_SERVER_RETRY_DELAY_MS) return { retry: false, reason: 'delay-too-long' }
+    return { retry: true, delayMs: quota.retryDelayMs + Math.floor(random() * RETRY_JITTER_MS), basis: 'server' }
+  }
+  return { retry: true, delayMs: retryDelayMs(retriesSoFar + 1, random), basis: 'exponential' }
+}
+
 /** Geri sayım metni için kalan saniye (yukarı yuvarlanır; 0'ın altına inmez). */
 export function remainingSeconds(untilMs: number, nowMs: number): number {
   return Math.max(0, Math.ceil((untilMs - nowMs) / 1000))

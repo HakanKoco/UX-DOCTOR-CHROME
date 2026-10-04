@@ -11,6 +11,7 @@ import { GEMINI_API_BASE, geminiGenerateUrl, type GeminiRequestBody } from '@/sh
 import type { GeminiModelId } from '@/shared/models'
 import { getApiKey } from '@/shared/settings'
 import { MissingApiKeyError } from './claudeClient'
+import type { LlmUsage } from '@/shared/report'
 
 const TIMEOUT_MS = 5 * 60 * 1000
 
@@ -61,7 +62,7 @@ export interface GeminiCallResult {
   rawText: string
   servedModel: string
   stopReason: string | null
-  usage: { inputTokens: number; outputTokens: number; cacheReadInputTokens: number | null } | null
+  usage: LlmUsage | null
 }
 
 export async function callGemini(model: GeminiModelId, body: GeminiRequestBody): Promise<GeminiCallResult> {

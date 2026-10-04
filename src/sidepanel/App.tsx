@@ -77,7 +77,9 @@ interface FallbackOffer {
 }
 
 function retryText(prefix: string, s: RetryState): string {
-  return `${prefix} — ${s.status ?? '?'} hatası; yeniden deneniyor (${s.attempt}/${s.maxRetries}), sonraki deneme ${s.secondsLeft} sn sonra.`
+  const cause = s.quotaLabel ? `${s.status} (${s.quotaLabel})` : `${s.status ?? '?'}`
+  const basis = s.basis === 'server' ? ' (Google\'ın önerdiği bekleme)' : ''
+  return `${prefix} — ${cause} hatası; yeniden deneniyor (${s.attempt}/${s.maxRetries}), sonraki deneme ${s.secondsLeft} sn sonra${basis}.`
 }
 
 function errorText(e: unknown): string {
