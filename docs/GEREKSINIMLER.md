@@ -61,6 +61,10 @@ Durum değerleri:
 | R47 | Tarayıcı testleri (yeni bağımlılık yok; başsız Chrome + CDP yalnızca test aracında) | 4 (doğrulama altyapısı) | ek | tests/browser, vitest.browser.config.ts | Tamamlandı (npm run test:browser) |
 | R48 | Bilinen hatalarla dolu test sayfası ve beklenen sonuç listesi | 4.b (altyapı) | ek | tests/fixtures/bilinen-hatalar.html, tests/fixtures/beklenen.json | Tamamlandı (7 kasıtlı hata yakalanıyor, 5 kontrol öğesinde yanlış alarm yok; manuel tablo öğrencide) |
 | R49 | Sayfa çevirisi tespiti ve raporda not | (tekrarlanabilirlik) | ek | src/shared/translation.ts, src/content/selector.ts | Tamamlandı (sezgisel; resmi doküman bulunamadı) |
+| R50 | 429 kota teşhisi (RPM/TPM/RPD), RetryInfo'ya uyan yeniden deneme, günlük kotada durma, düşünme token sayısı | 2.b (çalışabilirlik) | ek | src/shared/geminiResponse.ts, src/shared/retry.ts | Tamamlandı (quota.test.ts; kota türü quotaId kalıbından sezgisel, Gemini dokümanı adları yayımlamıyor) |
+| R51 | Sayfa yüklenmeden analiz engeli, rapora page.loadState | 2 (tekrarlanabilirlik) | ek | src/shared/loadState.ts, src/content/analyzer.ts | Tamamlandı (loadState.test.ts, known-errors.test.ts) |
+| R52 | Üçüncü taraf çerez/onay bileşeni etiketi (skoru etkilemez) | 4.b (altyapı) | ek | src/shared/thirdParty.ts | Tamamlandı (third-party.test.ts) |
+| R53 | İstek boyutu küçültme seçimi; skor ayrım gücü alternatifleri ve LLM skorundaki belirsiz cevap sorunları | 2.b, 2 (Skorlama) | ek | — | Karar bekliyor (öğrenci; skor alternatifleri için rapor JSON'ları gerekli) |
 
 ## Teslim öncesi denetim (ODEV.md madde madde)
 
