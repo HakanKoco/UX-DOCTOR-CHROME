@@ -34,8 +34,8 @@ deterministik %20, LLM %20, skorlama %15, README/demo/rapor %10, yansıtma %10. 
    node -v            # 22.12 veya üstü olmalı
    npm install
    npm run build
-   npm test           # 212 birim testi geçmeli
-   npm run test:browser  # 20 tarayıcı testi (yüklü Chrome gerekir)
+   npm test           # tüm birim testleri geçmeli (bu turda 225)
+   npm run test:browser  # tarayıcı testleri (bu turda 40; yüklü Chrome gerekir)
    ```
 2. Chrome → `chrome://extensions` → **Geliştirici modu** açık → **Paketlenmemiş öğe yükle** → `dist/` klasörü.
 3. Yapboz simgesinden **UX Doktor**'u sabitle.
