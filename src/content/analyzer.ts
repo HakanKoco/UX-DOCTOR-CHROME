@@ -2,11 +2,23 @@
 // etkin sekmeye enjekte edilir (manifest'te statik content_scripts yoktur).
 // Salt okunurdur: tıklama, form gönderme, klavye simülasyonu yapmaz; input/textarea/select .value okumaz.
 import { CONTENT_API_VERSION, type ContentApi, type PageInfo, type SelectorCheck } from '@/shared/contentApi'
+import { evaluateLoadState, type LoadState } from '@/shared/loadState'
 import { detectTranslation } from '@/shared/translation'
 import { runDeterministic } from './axeRunner'
 import { clearHighlights, highlight } from './highlight'
 import { buildInventory } from './inventory'
 import { collectSensitivitySignals } from './signals'
+
+/** Yükleme durumu: readyState + son biten kaynak isteğinden bu yana geçen süre (yalnızca okuma). */
+function measureLoadState(): LoadState {
+  const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[]
+  const lastEnd = resources.reduce((max, r) => Math.max(max, r.responseEnd), 0)
+  return evaluateLoadState({
+    readyState: document.readyState,
+    msSinceLastResource: resources.length > 0 ? Math.round(performance.now() - lastEnd) : null,
+    resourceCount: resources.length,
+  })
+}
 
 function getPageInfo(): PageInfo {
   return {
@@ -19,6 +31,7 @@ function getPageInfo(): PageInfo {
       htmlClasses: Array.from(document.documentElement.classList),
       fontWrapperCount: document.querySelectorAll('font[style*="vertical-align"]').length,
     }),
+    loadState: measureLoadState(),
   }
 }
 

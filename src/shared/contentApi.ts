@@ -1,11 +1,12 @@
 // Sayfaya enjekte edilen analiz betiğinin (src/content/analyzer.ts) dışa açtığı API.
 // Betik, eklentinin izole dünyasında globalThis.__uxDoctor olarak durur; sayfanın kendi betikleri erişemez.
+import type { LoadState } from './loadState'
 import type { DeterministicCategoryId, Finding, ManualReviewItem, Severity } from './report'
 import type { Inventory } from './inventory'
 import type { SensitivitySignals } from './sensitivity'
 
 // API değiştiğinde artırılır: sekmede eski sürüm kaldıysa yan panel betiği yeniden enjekte eder.
-export const CONTENT_API_VERSION = 5
+export const CONTENT_API_VERSION = 6
 
 import type { TranslationResult } from './translation'
 
@@ -18,6 +19,8 @@ export interface PageInfo {
   viewport: { width: number; height: number }
   /** Tarayıcı sayfa çevirisi açık mı (sezgisel; src/shared/translation.ts). */
   translation: TranslationResult
+  /** Analiz anındaki yükleme durumu (src/shared/loadState.ts). Eski kayıtlarda olmayabilir. */
+  loadState?: LoadState
 }
 
 export interface DeterministicRaw {

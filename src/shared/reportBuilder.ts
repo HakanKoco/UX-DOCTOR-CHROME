@@ -27,6 +27,7 @@ export function buildReport(input: ReportInput): UxReport {
       lang: input.page.lang,
       translationDetected: input.page.translation.detected,
       translationReasons: input.page.translation.reasons,
+      ...(input.page.loadState ? { loadState: input.page.loadState } : {}),
     },
     privacy: input.privacy,
     deterministic: {

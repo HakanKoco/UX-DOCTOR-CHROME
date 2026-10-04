@@ -23,6 +23,7 @@ import {
   type ConsistencyProgress,
 } from '@/shared/consistencyProgress'
 import { FALLBACK_GEMINI_MODEL } from '@/shared/models'
+import { loadStateWarning } from '@/shared/loadState'
 import { detectSensitivePage, isLocked } from '@/shared/sensitivity'
 import { keyStatus } from '@/shared/settings'
 import { requestSiteAccess } from '@/shared/sitePermissions'
@@ -172,7 +173,15 @@ export default function App() {
       const tab = await getActiveTab()
       setTabId(tab.id)
       setWindowId(tab.windowId)
-      setPage(await callContent(tab.id, 'getPageInfo'))
+      const info = await callContent(tab.id, 'getPageInfo')
+      setPage(info)
+      // Sayfa hâlâ yükleniyorsa analiz yapılmaz: eksik DOM'a göre çıkan sonuç rapora girmesin.
+      if (info.loadState?.status === 'loading') {
+        setDet(null)
+        setPrivacy(null)
+        setError({ text: loadStateWarning(info.loadState) ?? 'Sayfa hâlâ yükleniyor.', canRequestPermission: false })
+        return
+      }
       const sensitivity = detectSensitivePage(await callContent(tab.id, 'collectSensitivitySignals'))
       setPrivacy({
         level: sensitivity.level,
@@ -532,6 +541,11 @@ export default function App() {
         <p className="muted">
           {page.title || '(başlıksız sayfa)'} — <code>{page.url}</code>
         </p>
+      )}
+      {page?.loadState && page.loadState.status !== 'loading' && loadStateWarning(page.loadState) && (
+        <div className="warning" role="note">
+          <p>{loadStateWarning(page.loadState)}</p>
+        </div>
       )}
       {page?.translation.detected && (
         <div className="warning" role="note">

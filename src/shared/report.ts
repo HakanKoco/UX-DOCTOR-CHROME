@@ -1,7 +1,8 @@
 // Rapor JSON şeması — TEK KAYNAK. Dışa aktarılan raporlar, yan panel ve skorlama bu tipleri kullanır.
 // Şema değişirse REPORT_SCHEMA_VERSION artırılır.
+import type { LoadState } from './loadState'
 
-export const REPORT_SCHEMA_VERSION = '1.2.0'
+export const REPORT_SCHEMA_VERSION = '1.3.0'
 
 export type Severity = 'Kritik' | 'Yüksek' | 'Orta' | 'Düşük'
 export const SEVERITIES: readonly Severity[] = ['Kritik', 'Yüksek', 'Orta', 'Düşük']
@@ -216,6 +217,8 @@ export interface UxReport {
     /** Analiz sırasında tarayıcı sayfa çevirisi açıktı (seçiciler kararsız olabilir; lang çeviri dili olabilir). */
     translationDetected: boolean
     translationReasons: string[]
+    /** Analiz anındaki yükleme durumu (readyState, ağ sessizliği). 1.3.0 öncesi raporlarda yok. */
+    loadState?: LoadState
   }
   privacy: PrivacyRecord
   deterministic: DeterministicResult
@@ -288,6 +291,9 @@ export function validateReport(value: unknown): string[] {
   if (!isObj(r.tool) || r.tool.name !== 'UX Doktor' || !isStr(r.tool.version)) errors.push('tool: geçersiz')
   if (!isStr(r.generatedAt) || Number.isNaN(Date.parse(r.generatedAt))) errors.push('generatedAt: tarih değil')
   if (!isObj(r.page) || !isStr(r.page.url) || !isStr(r.page.title)) errors.push('page: url/title eksik')
+  else if (r.page.loadState !== undefined && (!isObj(r.page.loadState) || !isStr(r.page.loadState.status))) {
+    errors.push('page.loadState: geçersiz')
+  }
 
   if (!isObj(r.privacy)) errors.push('privacy: nesne değil')
   else {

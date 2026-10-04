@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { categoryForRule } from '@/shared/axeMapping'
-import type { DeterministicRaw } from '@/shared/contentApi'
+import type { DeterministicRaw, PageInfo } from '@/shared/contentApi'
 import { Browser, FIXTURES, fixtureUrl } from './chrome'
 
 // 9. madde: bilinen hatalarla dolu test sayfası. Deterministik katman beklenen.json'daki her hatayı yakalamalı ve
@@ -47,5 +47,13 @@ describe('bilinen-hatalar.html', () => {
     const got = det.findings.map((f) => `${f.ruleId} @ ${f.selector}`).sort()
     const want = expected.hatalar.map((h) => `${h.kural} @ ${h.secici}`).sort()
     expect(got).toEqual(want)
+  })
+})
+
+describe('yükleme durumu (getPageInfo)', () => {
+  it('yüklenmiş sayfada readyState "complete" ölçülür ve analiz engellenmez', async () => {
+    const info = await browser.page.evaluate<PageInfo>('globalThis.__uxDoctor.getPageInfo()')
+    expect(info.loadState?.readyState).toBe('complete')
+    expect(info.loadState?.status).not.toBe('loading')
   })
 })

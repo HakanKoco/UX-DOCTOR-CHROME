@@ -646,6 +646,14 @@ Kontrol iki aşamalıdır:
 
 ## Bilinen sınırlamalar
 
+- **Yükleme kontrolü sezgiseldir** (`src/shared/loadState.ts`, birim ve tarayıcı testli): analizden önce
+  `document.readyState` ve son biten kaynak isteğinin ne kadar önce bittiği (`performance.getEntriesByType('resource')`)
+  okunur. `readyState` "complete" değilse analiz yapılmaz ("Sayfa hâlâ yükleniyor, bitince tekrar analiz edin").
+  Son 2 sn içinde bir istek bittiyse analiz yapılır ama uyarı gösterilir. Durum rapora `page.loadState` olarak
+  yazılır. Sınırlar: süren (bitmemiş) istekler Resource Timing'de görünmez; tampon varsayılan 250 kayıtta dolar,
+  dolunca ağ sessizliği "ölçülemedi" olarak yazılır (tamponu büyütmek sayfayı değiştireceği için yapılmaz).
+  Sonradan JavaScript ile yüklenen içerik (sonsuz kaydırma, gecikmeli bileşenler) yine kaçabilir. Kaynak:
+  [Resource Timing](https://www.w3.org/TR/resource-timing/), [readyState](https://html.spec.whatwg.org/multipage/dom.html#current-document-readiness).
 - **Statik analiz:** Sayfayla etkileşim yapılmaz (tıklama, yazma, odaklama yok). Bu yüzden **Geri Bildirim** ilkesi
   yalnızca statik ipuçlarından değerlendirilir:
   - aria-live/status/alert bölgeleri,
