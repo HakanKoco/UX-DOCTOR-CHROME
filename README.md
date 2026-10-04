@@ -718,7 +718,13 @@ Testlerde gerçek API anahtarı ve gerçek kişisel veri kullanılmaz.
   - `privacy.test.ts`: iki anonim gizlilik fixture'ında gerçek sinyal toplama,
   - `known-errors.test.ts`: `bilinen-hatalar.html` sayfasındaki kasıtlı 7 hatanın hepsi yakalanır, 5 kontrol öğesinde
     yanlış alarm yoktur. Liste: `tests/fixtures/beklenen.json`. Bu, Ödev 4.b için aracın kendi kendine sınamasıdır;
-    manuel karşılaştırma tablosunun yerine geçmez.
+    manuel karşılaştırma tablosunun yerine geçmez,
+  - `own-ui-a11y.test.ts`: **kendi arayüzümüz kendi kurallarımızdan geçer.** Derlenmiş yan panel ve ayarlar sayfası
+    yerel bir HTTP sunucusundan açılır (`chrome.*` yalnızca testte sahte nesneyle karşılanır). Açık ve koyu temada
+    eklentinin sayfalara uyguladığı axe kurallarında ihlal olmadığı, hiçbir görünür metnin 13 px'ten küçük olmadığı
+    ve Tab ile gezilen her öğede en az 2 px odak çerçevesi bulunduğu ölçülür. Sınır: yalnızca analiz öncesi görünen
+    durumlar taranır; bulgu listeleri ve onay ekranı elle denetlenir. Sayfaya çizilen vurgulama etiketlerinin yazı
+    rengi her şiddet renginde en az 4,5:1 kontrast verecek biçimde seçilmiştir (`src/content/highlight.ts`).
 
 Commit öncesi: `npm run build`, `npx tsc --noEmit -p tsconfig.app.json`, `npm test` ve `npm run test:browser` hatasız
 geçmelidir. Kök

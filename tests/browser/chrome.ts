@@ -81,12 +81,34 @@ export class Page {
     })
   }
 
-  /** Fixture'ı açar ve derlenmiş analiz betiğini (dist IIFE) sayfaya enjekte eder. */
-  async open(url: string): Promise<void> {
+  /** Fixture'ı açar ve (varsayılan olarak) derlenmiş analiz betiğini (dist IIFE) sayfaya enjekte eder. */
+  async open(url: string, injectAnalyzer = true): Promise<void> {
     const loaded = this.once('Page.loadEventFired')
     await this.send('Page.navigate', { url })
     await loaded
-    await this.evaluate(readFileSync(ANALYZER_BUNDLE, 'utf8'), false)
+    if (injectAnalyzer) await this.evaluate(readFileSync(ANALYZER_BUNDLE, 'utf8'), false)
+  }
+
+  /** Sonraki her belge yüklenmeden önce çalışacak betik (ör. test için sahte chrome nesnesi). */
+  async addInitScript(source: string): Promise<void> {
+    await this.send('Page.addScriptToEvaluateOnNewDocument', { source })
+  }
+
+  /** Sayfada koşul doğru olana kadar bekler (en çok timeoutMs). */
+  async waitFor(expression: string, timeoutMs = 10_000): Promise<void> {
+    const until = Date.now() + timeoutMs
+    while (Date.now() < until) {
+      if (await this.evaluate<boolean>(`Boolean(${expression})`)) return
+      await new Promise((r) => setTimeout(r, 100))
+    }
+    throw new Error(`Koşul ${timeoutMs} ms içinde sağlanmadı: ${expression}`)
+  }
+
+  /** Gerçek klavye olayı olarak Tab tuşu (yalnızca test aracında; eklenti klavye simülasyonu yapmaz). */
+  async pressTab(): Promise<void> {
+    const key = { key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 }
+    await this.send('Input.dispatchKeyEvent', { type: 'keyDown', ...key })
+    await this.send('Input.dispatchKeyEvent', { type: 'keyUp', ...key })
   }
 
   /** Sayfada bir ifade çalıştırır; Promise ise bekler; sonucu JSON değer olarak döndürür. */

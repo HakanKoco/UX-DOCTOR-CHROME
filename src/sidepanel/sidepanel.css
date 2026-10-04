@@ -1,6 +1,6 @@
 /* Yan panele özgü stiller (ortak olanlar src/shared/base.css içinde). */
 .settings-summary {
-  font-size: 0.85rem;
+  font-size: 14px;
   margin-bottom: 12px;
 }
 
@@ -70,16 +70,16 @@
 }
 
 button.small {
-  min-height: 24px;
-  padding: 0 8px;
-  font-size: 0.85rem;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 14px;
 }
 
 .badge {
   display: inline-block;
   border-radius: 999px;
   padding: 0 8px;
-  font-size: 0.8rem;
+  font-size: 13px;
   font-weight: 700;
   color: #fff;
 }
@@ -128,7 +128,7 @@ button.small {
 .score-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 14px;
 }
 
 .score-table th,
@@ -147,7 +147,7 @@ button.small {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px;
-  font-size: 0.78rem;
+  font-size: 13px;
 }
 
 .dialog-backdrop {
@@ -202,7 +202,7 @@ button.small {
   min-width: 1.6em;
   border-radius: 999px;
   padding: 0 6px;
-  font-size: 0.8rem;
+  font-size: 13px;
   font-weight: 700;
   text-align: center;
   background: var(--accent);

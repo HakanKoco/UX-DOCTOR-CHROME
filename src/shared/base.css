@@ -17,7 +17,8 @@
   --mid: #8a6100;
   --low: #3f5a7a;
   font-family: system-ui, 'Segoe UI', sans-serif;
-  font-size: 14px;
+  /* Okunabilirlik: gövde 15 px; hiçbir metin 13 px altına inmez (tests/browser/own-ui-a11y.test.ts ölçer). */
+  font-size: 15px;
   line-height: 1.5;
   color: var(--fg);
   background: var(--bg);
@@ -49,24 +50,24 @@ body {
 }
 
 h1 {
-  font-size: 1.3rem;
+  font-size: 20px;
   margin: 0 0 8px;
 }
 
 h2 {
-  font-size: 1.05rem;
+  font-size: 17px;
   margin: 0 0 8px;
 }
 
 h3 {
-  font-size: 0.95rem;
+  font-size: 16px;
   margin: 12px 0 6px;
 }
 
 code,
 pre {
   font-family: ui-monospace, Consolas, monospace;
-  font-size: 0.85rem;
+  font-size: 14px;
 }
 
 .page {
@@ -143,7 +144,8 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 summary:focus-visible,
-a:focus-visible {
+a:focus-visible,
+[tabindex]:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
@@ -179,7 +181,7 @@ a:focus-visible {
 .diag-table {
   border-collapse: collapse;
   margin-top: 6px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .diag-table th,

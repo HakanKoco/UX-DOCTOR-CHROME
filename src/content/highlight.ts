@@ -14,6 +14,14 @@ const SEVERITY_COLORS: Record<Severity, string> = {
   Düşük: '#1a73e8',
 }
 
+// Etiket yazı rengi: her şiddet renginde en az 4,5:1 kontrast (beyaz: 4,77 / 4,51; koyu: 5,63 / 8,99).
+const SEVERITY_TEXT_COLORS: Record<Severity, string> = {
+  Kritik: '#ffffff',
+  Yüksek: '#1a1a1a',
+  Orta: '#1a1a1a',
+  Düşük: '#ffffff',
+}
+
 export interface HighlightItem {
   selector: string
   label: string
@@ -69,8 +77,8 @@ export function highlight(items: HighlightItem[], scrollToFirst: boolean): Highl
   style.textContent = `
     .box{position:fixed;left:0;top:0;box-sizing:border-box;border:3px solid var(--c);border-radius:4px;
          box-shadow:0 0 0 2px #fff,0 0 12px var(--c);pointer-events:none}
-    .tag{position:absolute;left:-3px;bottom:100%;margin-bottom:2px;background:var(--c);color:#fff;
-         font:600 12px/1.4 system-ui,sans-serif;padding:1px 6px;border-radius:4px;white-space:nowrap;
+    .tag{position:absolute;left:-3px;bottom:100%;margin-bottom:2px;background:var(--c);color:var(--t);
+         font:600 13px/1.4 system-ui,sans-serif;padding:1px 6px;border-radius:4px;white-space:nowrap;
          max-width:320px;overflow:hidden;text-overflow:ellipsis}`
   shadow.appendChild(style)
 
@@ -89,6 +97,7 @@ export function highlight(items: HighlightItem[], scrollToFirst: boolean): Highl
     const box = document.createElement('div')
     box.className = 'box'
     box.style.setProperty('--c', SEVERITY_COLORS[item.severity])
+    box.style.setProperty('--t', SEVERITY_TEXT_COLORS[item.severity])
     const tag = document.createElement('div')
     tag.className = 'tag'
     tag.textContent = item.label
