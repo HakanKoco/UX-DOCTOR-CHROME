@@ -26,6 +26,15 @@ export default function LlmDetails({ llm }: { llm: LlmResult }) {
           Şemaya uymayan {llm.malformedAnswers} cevap atlandı; bu sorular "cevapsız" sayıldı ve skora girmedi.
         </p>
       )}
+      {llm.run.manualFallback && (
+        <div className="warning" role="note">
+          <p>
+            <strong>Elle onaylı yedek model denemesi:</strong> bu sonuç <code>{llm.run.requestedModel}</code> ile alındı;
+            asıl model <code>{llm.run.manualFallback.fromModel}</code> yanıt veremedi ({llm.run.manualFallback.reason}).
+            Tutarlılık testi istatistiğine girmez.
+          </p>
+        </div>
+      )}
       <div className="card">
         <p>
           Sağlayıcı: <code>{llm.run.provider}</code> · Model: <code>{llm.run.requestedModel}</code>

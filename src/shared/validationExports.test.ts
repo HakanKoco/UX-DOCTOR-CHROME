@@ -5,6 +5,7 @@ import { evaluateAnswers, type RawAnswer } from './llmValidate'
 import type { LlmResult } from './report'
 import { RUBRIC } from './rubric'
 import { sampleInventory } from './testFixtures'
+import { MAX_RETRIES } from './retry'
 import { buildConsistencyExport, buildHallucinationReview } from './validationExports'
 
 // Bu testlerdeki "çalıştırmalar" birim testi için kurgulanmış girdilerdir; gerçek ölçüm değildir.
@@ -104,7 +105,7 @@ describe('buildConsistencyExport — Gemini', () => {
     expect(ex.provider).toBe('gemini')
     expect(ex.requestedModel).toBe('gemini-3.8-flash')
     expect(ex.parameters).toEqual({ maxTokens: 16000, temperature: 1, thinkingLevel: 'MEDIUM' })
-    expect(ex.pacing).toEqual({ runIntervalMs: 15000, maxRetries: 4 })
+    expect(ex.pacing).toEqual({ runIntervalMs: 15000, maxRetries: MAX_RETRIES })
     expect(ex.runs[0]).toMatchObject({ provider: 'gemini', retries: 2 })
     expect(ex.requestBody).toHaveProperty('generationConfig')
   })

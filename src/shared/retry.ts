@@ -1,18 +1,22 @@
-// Tutarlılık testinde ("aynı sayfayı N kez analiz et") istek sınırına takılmamak için bekleme ve yeniden deneme kuralları.
+// LLM çağrılarında (tek analiz ve tutarlılık testi) geçici hatalara karşı bekleme ve yeniden deneme kuralları.
 // Saf fonksiyonlar; birim testli (retry.test.ts).
 //
 // Kaynak (Gemini): https://ai.google.dev/gemini-api/docs/troubleshooting — 429 RESOURCE_EXHAUSTED ve 503 UNAVAILABLE
 // için üstel bekleme ("1s, 2s, 4s, 8s"), rastgele sapma (jitter) ve deneme sayısına üst sınır önerilir; 400/403 gibi
 // kalıcı hatalar yeniden denenmez. Ücretsiz katmanın sayısal sınırları dokümanda yayımlanmaz (AI Studio'da görülür),
 // bu yüzden çalıştırmalar arası bekleme sabit ve temkinli tutuldu.
+//
+// Dokümandaki örnekten (SDK: 4 deneme, en çok 60 sn) daha uzun bekliyoruz: ücretsiz katmanda 503 dakikalarca
+// sürebiliyor (gerçek kullanımda 4 deneme yetmedi). Bekleme yan panelde geri sayımla gösterilir ve kullanıcı
+// istediği an iptal edebilir; toplam bekleme en çok ≈ 4,6 dk'dır (5+10+20+40+80+120 sn + sapma).
 import type { Provider } from './models'
 
 /** Çalıştırmalar arası bekleme (ms). Claude'da önceki davranış korunur (bekleme yok). */
 export const RUN_INTERVAL_MS: Record<Provider, number> = { claude: 0, gemini: 15_000 }
 
-export const MAX_RETRIES = 4
-export const RETRY_BASE_DELAY_MS = 2_000
-export const RETRY_MAX_DELAY_MS = 60_000
+export const MAX_RETRIES = 6
+export const RETRY_BASE_DELAY_MS = 5_000
+export const RETRY_MAX_DELAY_MS = 120_000
 export const RETRY_JITTER_MS = 1_000
 
 /**
@@ -24,8 +28,8 @@ export function isRetryableStatus(status: number | undefined): boolean {
 }
 
 /**
- * attempt. yeniden denemeden önce beklenecek süre (attempt 1'den başlar): 2s, 4s, 8s, 16s (+ 0–1 s rastgele sapma),
- * en çok 60 s. random parametresi testte sabitlenebilsin diye dışarıdan verilir.
+ * attempt. yeniden denemeden önce beklenecek süre (attempt 1'den başlar): 5s, 10s, 20s, 40s, 80s, 120s
+ * (+ 0–1 s rastgele sapma), en çok 120 s. random parametresi testte sabitlenebilsin diye dışarıdan verilir.
  */
 export function retryDelayMs(attempt: number, random: () => number = Math.random): number {
   const exponential = RETRY_BASE_DELAY_MS * 2 ** Math.max(0, attempt - 1)
@@ -35,4 +39,9 @@ export function retryDelayMs(attempt: number, random: () => number = Math.random
 /** attempt. denemeden sonra (başarısızsa) yeniden denenmeli mi. */
 export function shouldRetry(status: number | undefined, retriesSoFar: number): boolean {
   return isRetryableStatus(status) && retriesSoFar < MAX_RETRIES
+}
+
+/** Geri sayım metni için kalan saniye (yukarı yuvarlanır; 0'ın altına inmez). */
+export function remainingSeconds(untilMs: number, nowMs: number): number {
+  return Math.max(0, Math.ceil((untilMs - nowMs) / 1000))
 }

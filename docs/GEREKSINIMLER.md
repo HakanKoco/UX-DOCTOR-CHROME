@@ -32,7 +32,7 @@ Durum değerleri:
 | R18 | Rapor eklenti panelinde görüntülenir | 2 (Rapor) | 5 | src/sidepanel | Tamamlandı ("En önemli 3 sorun", kapalı ve sayı rozetli gruplar) |
 | R19 | Rapor JSON olarak dışa aktarılır | 2 (Rapor) | 5 | src/shared, src/sidepanel | Tamamlandı (src/shared/report.ts şeması, Blob indirme) |
 | R20 | En az 3 sitede test (sağlık, Türk e-ticaret, kamu; yalnızca herkese açık sayfalar) | 3 | — | reports/ | Öğrenci |
-| R21 | Tutarlılık testi aracı: aynı sayfayı N ≥ 3 kez analiz, ilke başına ortalama / std / min-max dışa aktarımı | 4.a | 6 | src/sidepanel, src/shared | Tamamlandı (N=3-10, ilke başına ort./std/min-max, soru uyumu, JSON; scripts/tutarlilik-tablosu.mjs; Gemini'de çalıştırmalar arası 15 sn bekleme, 429/503'te en çok 4 yeniden deneme: src/shared/retry.ts) |
+| R21 | Tutarlılık testi aracı: aynı sayfayı N ≥ 3 kez analiz, ilke başına ortalama / std / min-max dışa aktarımı | 4.a | 6 | src/sidepanel, src/shared | Tamamlandı (N=3-10, ilke başına ort./std/min-max, soru uyumu, JSON; scripts/tutarlilik-tablosu.mjs; Gemini'de çalıştırmalar arası 15 sn bekleme; 429/503/529'da geri sayımlı en çok 6 yeniden deneme: src/shared/retry.ts; ilerleme chrome.storage.local'de, kaldığı yerden devam: src/shared/consistencyProgress.ts) |
 | R22 | Tutarlılık ölçümünün yapılması; sapma > 10 puansa neden ve çözüm açıklaması | 4.a | — | README.md, reports/ | Öğrenci |
 | R23 | Manuel karşılaştırma tablosu şablonu (yakalanan / kaçırılan / yanlış alarm) | 4.b | 6 | docs/ | Şablon tamamlandı: docs/manuel-karsilastirma.md (doldurma: Öğrenci) |
 | R24 | Manuel denetim (klavye + ekran okuyucu, en az 1 görev) ve tablonun doldurulması | 4.b | — | docs/ | Öğrenci |
@@ -79,7 +79,7 @@ olduğu yazılı), **Eksik**, **Öğrenci işi** (gerçek ölçüm/gözlem; değ
 | 2.a | `incomplete` ihlal sayılmaz, ayrı listelenir | `axeRunner.ts` (`results.incomplete` → `manualReview`); `src/sidepanel/ManualReviewList.tsx` | Tamam (otomatik testi yok; elle görülür) |
 | 2.b | LLM ile Norman'ın 6 ilkesi | `src/shared/rubric.ts`; `llm.test.ts` "rubrik her ilke için 4-6 soru içerir", "yapılandırılmış çıktı şeması gönderilir" | Tamam |
 | 2.b | Envanterde olmayan kimlik halüsinasyon sayılır | `src/shared/llmValidate.ts`; `llm.test.ts` "envanterde olmayan kimlik halüsinasyon sayılır ve kanıttan düşülür"; `llmRobustness.test.ts` | Tamam |
-| 2.b | LLM çağrısının gerçek koşulda tamamlanması | Gemini ücretsiz katmanında sürekli 503: tek analizde yeniden deneme yoktu (`src/sidepanel/App.tsx` `sendLlm` → `callLlm`), tutarlılık testinde 4 deneme vardı ve ilerleme yalnızca bellekteydi | Kısmi → bu turda madde 2 |
+| 2.b | LLM çağrısının gerçek koşulda tamamlanması | Gemini ücretsiz katmanında sürekli 503: tek analizde yeniden deneme yoktu (`src/sidepanel/App.tsx` `sendLlm` → `callLlm`), tutarlılık testinde 4 deneme vardı ve ilerleme yalnızca bellekteydi → Bu turda: tek analizde de geri sayımlı 6 deneme, Durdur düğmesi, elle onaylı "Flash-Lite ile dene" (`retry.test.ts`, `consistencyProgress.test.ts`). Google kaynaklı 503 kod ile çözülemez; gerçek çağrının tamamlanması öğrencinin denemesine bağlı | Tamam (kod) / Öğrenci işi (gerçek çağrı) |
 | 2 Skor | Her ilke/kategori için 0-100 alt skor | `src/scoring/score.ts`; `score.test.ts` "(d) çok sayıda Kritik ihlalde bile 0-100 aralığında kalır…" | Tamam |
 | 2 Skor | Ağırlıklı toplam skor | `src/scoring/weights.ts`; `score.test.ts` "Toplam = 0.6 × deterministik + 0.4 × LLM" | Tamam |
 | 2 Skor | Formül README'de ve gerekçeli | README "Skor formülü ve gerekçesi" | Tamam (gerçek sitelerde kalibrasyonu bu turda madde 4'te ölçülüyor) |
@@ -90,7 +90,7 @@ olduğu yazılı), **Eksik**, **Öğrenci işi** (gerçek ölçüm/gözlem; değ
 | 2 Rapor | Panelde görüntülenir | `src/sidepanel/App.tsx`, `FindingList.tsx`, `TopIssues.tsx` | Tamam (yazı boyutu ve kendi axe kontrolü bu turda madde 3) |
 | 2 Rapor | JSON dışa aktarma | `src/shared/reportBuilder.ts`; `reportBuilder.test.ts` "LLM olmadan rapor kurar…"; `src/sidepanel/download.ts` | Kısmi: şema yalnızca TypeScript tipi, dosyaları denetleyen çalışma zamanı doğrulayıcı yok → bu turda madde 5 |
 | 3 | 3 site (sağlık, Türk e-ticaret, kamu) | `reports/` içinde yalnızca `README.md` var | Öğrenci işi |
-| 4.a | Tutarlılık aracı (N ≥ 3, ort./std/min-max, JSON) | `src/shared/validationExports.ts`, `src/scoring/stats.ts`; `validationExports.test.ts` "ilke başına istatistik, eşik ve soru uyumu üretir"; `scripts/tutarlilik-tablosu.mjs` | Kısmi: 503'te yarım kalan test kaybolur → bu turda madde 2 |
+| 4.a | Tutarlılık aracı (N ≥ 3, ort./std/min-max, JSON) | `src/shared/validationExports.ts`, `src/scoring/stats.ts`; `validationExports.test.ts` "ilke başına istatistik, eşik ve soru uyumu üretir"; `scripts/tutarlilik-tablosu.mjs` ; ilerleme kaydı ve devam: `consistencyProgress.test.ts` "503 ile duraklatılan test biten çalıştırmaları korur ve kaldığı yerden sürer" | Tamam |
 | 4.a | Tutarlılık ölçümü ve > 10 puan açıklaması | — | Öğrenci işi |
 | 4.b | Manuel karşılaştırma şablonu | `docs/manuel-karsilastirma.md`; altyapı: `tests/fixtures/bilinen-hatalar.html`, `beklenen.json` | Tamam (şablon) |
 | 4.b | Klavye + ekran okuyucu denetimi ve tablo | — | Öğrenci işi |

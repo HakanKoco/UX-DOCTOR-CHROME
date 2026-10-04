@@ -258,18 +258,33 @@ Bunlara ek olarak:
 - Claude'da `cache_control` ile tekrarlanan girdi önbellekten okunur; bu yalnızca maliyeti etkiler, çıktıyı
   etkilemez.
 
-**İstek sınırı (tutarlılık testi):** Google ücretsiz katmanın sayısal sınırlarını dokümanda yayımlamıyor ("can be
-viewed in Google AI Studio"). Bu yüzden temkinli bir kural uygulanır (`src/shared/retry.ts`, birim testli):
-- Gemini çalıştırmaları arasında **15 sn** beklenir.
-- **429** (`RESOURCE_EXHAUSTED`) ya da **503** hatasında aynı istek üstel beklemeyle en çok **4 kez** yeniden
-  gönderilir: 2 s, 4 s, 8 s, 16 s, her birine 0-1 s rastgele sapma eklenir, üst sınır 60 s.
+**İstek sınırı ve geçici kullanılamama (tek analiz ve tutarlılık testi):** Google ücretsiz katmanın sayısal
+sınırlarını dokümanda yayımlamıyor ("can be viewed in Google AI Studio"). Ücretsiz katmanda yoğunluk nedeniyle
+503 UNAVAILABLE dakikalarca sürebiliyor. Bu yüzden temkinli bir kural uygulanır (`src/shared/retry.ts`, birim testli):
+- **429** (`RESOURCE_EXHAUSTED`), **503** ya da Claude'un **529** (overloaded) hatasında aynı istek üstel beklemeyle en
+  çok **6 kez** yeniden gönderilir: 5 s, 10 s, 20 s, 40 s, 80 s, 120 s, her birine 0-1 s rastgele sapma eklenir
+  (toplam en çok ≈ 4,6 dk). Bu, dokümandaki örnekten (SDK: 4 deneme, en çok 60 s) uzundur; bekleme panelde
+  "yeniden deneniyor (2/6), sonraki deneme X sn sonra" diye görünür ve **Durdur** ile kesilebilir.
+- Gemini tutarlılık testinde çalıştırmalar arasında **15 sn** beklenir (geri sayımlı). Claude'da bu bekleme yoktur.
 - Diğer hatalar (400, 403, 404) yeniden denenmez.
-- Claude'da çalıştırmalar arası bekleme yoktur; 429 ve 529 (overloaded) için aynı yeniden deneme kuralı geçerlidir.
 - Yeniden deneme sayısı çalıştırma kaydına (`retries`) ve tutarlılık dışa aktarımına (`pacing`) yazılır.
 - Onay ekranı bu davranışı gönderimden önce açıkça yazar.
 
+**Kaldığı yerden devam (tutarlılık testi):** Her biten çalıştırma `chrome.storage.local` içine yazılır
+(`src/shared/consistencyProgress.ts`, birim testli). Denemeler tükenirse, bağlantı koparsa ya da kullanıcı
+**Durdur** derse test başarısız sayılmaz, **duraklatılır**. Panel kapansa bile kayıt kalır. "Kaldığı yerden devam et"
+aynı URL'de, sayfa hâlâ kilitsizse ve onay ekranından yeniden geçerek kalan çalıştırmaları gönderir. Gövde ilk
+onaydakinin aynısıdır. Kayıtta yalnızca onay ekranında gösterilmiş maskelenmiş envanter, istek gövdesi (anahtar yok)
+ve yanıtlar vardır; yeni test başlatılınca ya da **Kaydı sil** ile silinir.
+
+**Elle onaylı yedek model ("Flash-Lite ile dene"):** Asıl Gemini modeli geçici hatayla yanıt veremezse panel
+`gemini-3.5-flash-lite` ile **ayrı bir deneme** önerir. Otomatik geçiş yapılmaz. Yeni gövde yine onay ekranında
+gösterilir. Sonuç raporda `llm.run.requestedModel` ve `llm.run.manualFallback` (asıl model ve neden) alanlarıyla
+yazılır. Tutarlılık testi kaydına hiç girmez, istatistiği tek modelli kalır.
+
 Kaynak: [Gemini sorun giderme — 429/503 için üstel bekleme](https://ai.google.dev/gemini-api/docs/troubleshooting),
-[istek sınırları](https://ai.google.dev/gemini-api/docs/rate-limits).
+[istek sınırları](https://ai.google.dev/gemini-api/docs/rate-limits),
+[chrome.storage (storage.local 10 MB)](https://developer.chrome.com/docs/extensions/reference/api/storage).
 
 **Ret yedeği:** Opus/Sonnet 5.5'te `fallbacks: "default"` (beta başlığı `server-side-fallback-2026-07-01`) gönderilir.
 Model isteği güvenlik nedeniyle reddederse API isteği önerilen başka bir modelde çalıştırır. Hangi modelin yanıtladığı
@@ -305,10 +320,12 @@ kılar.
     model) ve `usageMetadata` alınır.
   - Kaynak: [generateContent API](https://ai.google.dev/api/generate-content),
     [yapılandırılmış çıktı](https://ai.google.dev/gemini-api/docs/generate-content/structured-output).
-- **Otomatik tekrar kapalı:** SDK habersiz tekrar göndermez (`maxRetries: 0`). Yeniden deneme yalnızca tutarlılık
-  testinde, yukarıdaki kurala göre ve onay ekranında açıklanarak yapılır.
-- **Uyanık tutma:** yan panel port üzerinden 20 saniyede bir ping atar; uzun süren istek sırasında service worker
-  uykuya geçmez.
+- **Otomatik tekrar kapalı:** SDK habersiz tekrar göndermez (`maxRetries: 0`). Yeniden deneme yalnızca yan panelde,
+  yukarıdaki kurala göre ve onay ekranında açıklanarak yapılır.
+- **Uyanık tutma:** bekleme service worker'da değil yan panelde yapılır; her deneme yeni bir port bağlantısıyla
+  service worker'ı uyandırır. İstek sürerken yan panel port üzerinden 20 saniyede bir ping atar (Chrome 114+:
+  "Sending a message with long-lived messaging keeps the service worker alive"). Ek izin gerekmez. Açık kalan
+  belirsizlik "Bilinen sınırlamalar"da.
 
 ---
 
@@ -615,8 +632,20 @@ Kontrol iki aşamalıdır:
   okunabilir ([koşullar](https://ai.google.dev/gemini-api/terms)). Maskeleme kurallı (regex) çalıştığı için kişi adı
   gibi veriler maskelenmeyebilir. Bu nedenle Gemini yalnızca herkese açık sayfalarda kullanılmalıdır.
 - **Gemini istek sınırları bilinmiyor:** Ücretsiz katman sınırları dokümanda sayı olarak yayımlanmıyor, projeye göre
-  AI Studio'da görülüyor. 15 sn bekleme ve 4 yeniden deneme bir tahmindir; sınır daha sıkıysa tutarlılık testinde bazı
-  çalıştırmalar başarısız olabilir. Başarısız çalıştırmalar dışa aktarımda `failures` alanına yazılır.
+  AI Studio'da görülüyor. 15 sn bekleme ve 6 yeniden deneme bir tahmindir. Yoğunluk (503) daha uzun sürerse test
+  duraklatılır ve sonra kaldığı yerden sürdürülür. Kalıcı hatayla biten çalıştırmalar dışa aktarımda `failures`
+  alanına yazılır.
+- **Service worker'ın 30 sn fetch kuralı (belirsiz):** Chrome dokümanı service worker'ın sonlandırıldığı durumlar
+  arasında "When a `fetch()` response takes more than 30 seconds to arrive" sayıyor. Aynı doküman Chrome 114'ten beri
+  uzun ömürlü port mesajlarının service worker'ı uyanık tuttuğunu da yazıyor
+  ([lifecycle](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle)). Yan
+  panelin 20 sn'lik ping'inin 30 sn'yi aşan tek bir `fetch` yanıtını korumaya yetip yetmediği dokümanda açıkça
+  yazmıyor ve bu repoda doğrulanmadı. Service worker yanıt gelmeden kapanırsa panel "bağlantı yanıt gelmeden koptu"
+  der. İstek sunucuda işlenmiş olabileceği için otomatik yeniden denenmez; tutarlılık testi duraklatılır ve elle
+  sürdürülür.
+- **Yedek model sonucu tutarlılık ölçümü değildir:** "Flash-Lite ile dene" ile alınan sonuç farklı bir modelden
+  gelir. Raporda model adı ve `manualFallback` notu yazılır, tutarlılık istatistiğine girmez. Raporlarda asıl modeli
+  ve yedeği karıştırmayın.
 - **Gemini 401 UNAUTHENTICATED (çözülmedi, teşhis eklendi):** Öğrencinin denemesinde "Anahtarı doğrula" 401
   döndürdü. Google'a göre 28 Mayıs 2026'dan beri AI Studio'daki yeni anahtarlar servis hesabına bağlı "auth key"
   türündedir ([api-key](https://ai.google.dev/gemini-api/docs/api-key)). Bu anahtarların biçimi dokümanda yazmıyor.

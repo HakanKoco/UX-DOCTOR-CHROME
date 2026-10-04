@@ -152,8 +152,13 @@ export interface LlmRunRecord {
   promptVersion: string
   /** Tutarlılığı etkileyen parametreler (gönderildiği haliyle). */
   parameters: { maxTokens: number; effort?: string; temperature?: number; fallbacks?: string; thinkingLevel?: string }
-  /** 429/503 nedeniyle yapılan yeniden deneme sayısı (yalnızca tutarlılık testinde; tek analizde 0). */
+  /** 429/503(/529) nedeniyle yapılan yeniden deneme sayısı (tek analizde ve tutarlılık testinde). */
   retries: number
+  /**
+   * Bu çalıştırma, asıl model geçici hatayla (503/429) yanıt veremeyince kullanıcının elle onayladığı yedek model
+   * denemesidir ("Flash-Lite ile dene"). Tutarlılık testi istatistiğine hiçbir zaman girmez.
+   */
+  manualFallback?: { fromModel: string; reason: string }
   /** Claude: stop_reason; Gemini: finishReason. */
   stopReason: string | null
   durationMs: number

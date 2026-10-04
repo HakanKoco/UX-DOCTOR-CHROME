@@ -16,6 +16,8 @@ interface Props {
   maxRetries: number
   /** Kullanıcı mesajının okunur hali (gövdedeki JSON metninin ayrıştırılmış görünümü). */
   readableUserPayload: unknown
+  /** Bu gönderime özgü açıklama (yarım testin devamı, elle onaylı yedek model…). */
+  note?: string
   onSend: () => void
   onCancel: () => void
 }
@@ -33,6 +35,7 @@ export default function ConfirmSendDialog({
   runIntervalMs,
   maxRetries,
   readableUserPayload,
+  note,
   onSend,
   onCancel,
 }: Props) {
@@ -82,13 +85,16 @@ export default function ConfirmSendDialog({
             gönderilecek ({kb} KB). Ekran görüntüsü, form değerleri ve sayfanın tam HTML'i gönderilmez; metinler
             maskelenmiştir.
           </p>
-          {runs > 1 && (
-            <p className="muted">
-              {runIntervalMs > 0 && <>Çalıştırmalar arasında {runIntervalMs / 1000} sn beklenir. </>}
-              İstek sınırı (429) ya da geçici kullanılamama (503) hatasında aynı istek, üstel beklemeyle en çok{' '}
-              {maxRetries} kez yeniden gönderilir.
+          {note && (
+            <p>
+              <strong>{note}</strong>
             </p>
           )}
+          <p className="muted">
+            {runs > 1 && runIntervalMs > 0 && <>Çalıştırmalar arasında {runIntervalMs / 1000} sn beklenir. </>}
+            İstek sınırı (429) ya da geçici kullanılamama (503) hatasında aynı istek, panelde geri sayımla ve üstel
+            beklemeyle en çok {maxRetries} kez yeniden gönderilir; "Durdur" ile istediğiniz an kesebilirsiniz.
+          </p>
           <p className="muted">
             Adres: <code>{transport.url}</code>. API anahtarı bu gövdede ve adreste yoktur; <code>{transport.keyHeader}</code>{' '}
             başlığına service worker tarafından eklenir. Diğer başlıklar:{' '}

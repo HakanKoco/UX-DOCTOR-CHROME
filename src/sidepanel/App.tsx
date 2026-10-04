@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CATEGORY_LABELS, DETERMINISTIC_CATEGORY_IDS } from '@/shared/axeMapping'
 import type { DeterministicRaw, PageInfo } from '@/shared/contentApi'
 import type { Inventory } from '@/shared/inventory'
@@ -7,6 +7,22 @@ import type { Finding, LlmResult, PrivacyRecord } from '@/shared/report'
 import { PRINCIPLE_IDS, PRINCIPLE_LABELS } from '@/shared/rubric'
 import { buildReport, slugForFile, timestampForFile } from '@/shared/reportBuilder'
 import { MAX_RETRIES, RUN_INTERVAL_MS } from '@/shared/retry'
+import {
+  attemptedRuns,
+  clearProgress,
+  isComplete,
+  loadProgress,
+  newProgress,
+  nextRunIndex,
+  remainingRuns,
+  samePage,
+  saveProgress,
+  withFailure,
+  withPause,
+  withResult,
+  type ConsistencyProgress,
+} from '@/shared/consistencyProgress'
+import { FALLBACK_GEMINI_MODEL } from '@/shared/models'
 import { detectSensitivePage, isLocked } from '@/shared/sensitivity'
 import { keyStatus } from '@/shared/settings'
 import { requestSiteAccess } from '@/shared/sitePermissions'
@@ -14,7 +30,6 @@ import {
   buildConsistencyExport,
   buildHallucinationReview,
   type ConsistencyExport,
-  type ConsistencyFailure,
 } from '@/shared/validationExports'
 import DiagnosticsDetails from '@/shared/DiagnosticsDetails'
 import type { GeminiDiagnostics } from '@/shared/geminiResponse'
@@ -28,15 +43,56 @@ import TopIssues from './TopIssues'
 import SettingsSummary, { useSettings } from './SettingsSummary'
 import ValidationTools from './ValidationTools'
 import { downloadJson } from './download'
-import { LlmCallError, buildLlmResult, callLlm, callLlmWithRetry, wait } from './llmClient'
+import {
+  LlmCallError,
+  LlmCancelledError,
+  buildLlmResult,
+  callLlmWithRetry,
+  isTransientFailure,
+  waitWithCountdown,
+  type RetryState,
+} from './llmClient'
+import ConsistencyResumeCard from './ConsistencyResumeCard'
 import { captureFindingScreenshot } from './screenshot'
 import { TabAccessError, callContent, getActiveTab } from './tabBridge'
 
 interface PendingSend {
   request: LlmRequest
   inventory: Inventory
-  /** 1: tek analiz; >1: tutarlılık testi (aynı gövde N kez). */
+  /** Bu onayla gönderilecek istek sayısı. */
   runs: number
+  /**
+   * single: tek analiz; consistency: yeni tutarlılık testi; resume: yarım kalan testin kalan çalıştırmaları;
+   * fallback: asıl model geçici hata verdikten sonra elle onaylı yedek model denemesi (tutarlılığa girmez).
+   */
+  mode: 'single' | 'consistency' | 'resume' | 'fallback'
+  fallbackFrom?: { fromModel: string; reason: string }
+}
+
+/** Asıl model geçici hatayla yanıt veremedi; kullanıcıya "Flash-Lite ile dene" önerilir. */
+interface FallbackOffer {
+  inventory: Inventory
+  fromModel: string
+  reason: string
+}
+
+function retryText(prefix: string, s: RetryState): string {
+  return `${prefix} — ${s.status ?? '?'} hatası; yeniden deneniyor (${s.attempt}/${s.maxRetries}), sonraki deneme ${s.secondsLeft} sn sonra.`
+}
+
+function errorText(e: unknown): string {
+  return e instanceof Error ? e.message : String(e)
+}
+
+function exportOf(record: ConsistencyProgress): ConsistencyExport {
+  return buildConsistencyExport({
+    page: record.page,
+    request: record.request,
+    inventory: record.inventory,
+    requestedRuns: record.requestedRuns,
+    results: record.results,
+    failures: record.failures,
+  })
 }
 
 type UiError = { text: string; canRequestPermission: boolean; diagnostics?: GeminiDiagnostics } | null
@@ -62,10 +118,44 @@ export default function App() {
   /** LLM analizinde kullanılan yerel envanter (halüsinasyon elle doğrulama listesi için). */
   const [llmInventory, setLlmInventory] = useState<Inventory | null>(null)
   const [consistency, setConsistency] = useState<ConsistencyExport | null>(null)
-  const [progress, setProgress] = useState<{ done: number; total: number; failed: number } | null>(null)
+  /** Tutarlılık testinin chrome.storage.local'deki ilerleme kaydı (panel kapansa da kalır). */
+  const [progressRecord, setProgressRecord] = useState<ConsistencyProgress | null>(null)
+  const [fallbackOffer, setFallbackOffer] = useState<FallbackOffer | null>(null)
   const [pending, setPending] = useState<PendingSend | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<UiError>(null)
+  /** Süren LLM işini (bekleme/yeniden deneme) durdurmak için. */
+  const abortRef = useRef<AbortController | null>(null)
+  const [cancellable, setCancellable] = useState(false)
+
+  // Panel açılınca önceki (yarım kalmış ya da dışa aktarılmamış) tutarlılık testi kaydı yüklenir.
+  useEffect(() => {
+    loadProgress()
+      .then((record) => {
+        setProgressRecord(record)
+        if (record) setConsistency(exportOf(record))
+      })
+      .catch(() => undefined)
+  }, [])
+
+  function startCancellable(): AbortController {
+    const controller = new AbortController()
+    abortRef.current = controller
+    setCancellable(true)
+    return controller
+  }
+
+  function endCancellable() {
+    abortRef.current = null
+    setCancellable(false)
+  }
+
+  /** Asıl Gemini modeli geçici hatayla yanıt veremediyse elle onaylı yedek model denemesini önerir. */
+  function offerFallback(request: LlmRequest, inventory: Inventory, e: unknown) {
+    if (e instanceof LlmCancelledError) return
+    if (request.provider !== 'gemini' || request.model === FALLBACK_GEMINI_MODEL) return
+    setFallbackOffer({ inventory, fromModel: request.model, reason: errorText(e) })
+  }
 
   async function analyze() {
     setBusy('Deterministik analiz çalışıyor…')
@@ -73,8 +163,9 @@ export default function App() {
     setLlm(null)
     setSentBody(null)
     setLlmInventory(null)
-    setConsistency(null)
-    setProgress(null)
+    setFallbackOffer(null)
+    // Tutarlılık kaydı silinmez (yarım test sonra sürdürülebilir); yalnızca görünüm kayda göre yenilenir.
+    setConsistency(progressRecord ? exportOf(progressRecord) : null)
     try {
       const tab = await getActiveTab()
       setTabId(tab.id)
@@ -103,7 +194,12 @@ export default function App() {
     setBusy('Öğe envanteri hazırlanıyor…')
     try {
       const inventory = await callContent(tabId, 'buildInventory')
-      setPending({ request: buildLlmRequest(settings.model, inventory), inventory, runs })
+      setPending({
+        request: buildLlmRequest(settings.model, inventory),
+        inventory,
+        runs,
+        mode: runs > 1 ? 'consistency' : 'single',
+      })
     } catch (e) {
       setError(toUiError(e))
     } finally {
@@ -111,15 +207,39 @@ export default function App() {
     }
   }
 
+  /** "Flash-Lite ile dene": yeni istek gövdesi yine onay ekranında gösterilir; tutarlılık kaydına dokunulmaz. */
+  function prepareFallback() {
+    if (!fallbackOffer) return
+    setError(null)
+    setPending({
+      request: buildLlmRequest(FALLBACK_GEMINI_MODEL, fallbackOffer.inventory),
+      inventory: fallbackOffer.inventory,
+      runs: 1,
+      mode: 'fallback',
+      fallbackFrom: { fromModel: fallbackOffer.fromModel, reason: fallbackOffer.reason },
+    })
+  }
+
   async function sendLlm() {
     if (!pending) return
-    const { request, inventory, runs } = pending
+    const p = pending
     setPending(null)
-    if (runs > 1) return runConsistency(request, inventory, runs)
-    setBusy(`${PROVIDER_API_NAMES[request.provider]} yanıtı bekleniyor (bir dakikayı bulabilir)…`)
+    if (p.mode === 'consistency') return startConsistency(p.request, p.inventory, p.runs)
+    if (p.mode === 'resume') return progressRecord ? continueConsistency(progressRecord) : undefined
+    return runSingle(p)
+  }
+
+  /** Tek analiz (ya da elle onaylı yedek model denemesi): 429/503'te görünür geri sayımla yeniden denenir. */
+  async function runSingle(p: PendingSend) {
+    const { request, inventory } = p
+    const label = `${PROVIDER_API_NAMES[request.provider]} (${request.model})`
+    setFallbackOffer(null)
+    setError(null)
+    setBusy(`${label} yanıtı bekleniyor (bir dakikayı bulabilir)…`)
+    const controller = startCancellable()
     try {
-      const call = await callLlm(request)
-      const result = await buildLlmResult(call, request, inventory, tabId)
+      const { call, retries } = await callLlmWithRetry(request, (s) => setBusy(retryText(label, s)), controller.signal)
+      const result = await buildLlmResult(call, request, inventory, tabId, retries, p.fallbackFrom)
       // Şema hatasında da sonuç saklanır: ham yanıt rapordaki çalıştırma kaydında kalır.
       setLlm(result)
       setSentBody(request)
@@ -127,66 +247,135 @@ export default function App() {
       if (result.schemaError) setError({ text: result.schemaError, canRequestPermission: false })
     } catch (e) {
       setError(toUiError(e))
+      offerFallback(request, inventory, e)
+    } finally {
+      endCancellable()
+      setBusy(null)
+    }
+  }
+
+  /** Yeni tutarlılık testi: varsa eski kayıt silinir (onay ekranında yazıyor), yeni kayıt hemen yazılır. */
+  async function startConsistency(request: LlmRequest, inventory: Inventory, runs: number) {
+    if (!page) return
+    const record = newProgress({ page, request, inventory, requestedRuns: runs })
+    await saveProgress(record)
+    await continueConsistency(record)
+  }
+
+  /**
+   * Tutarlılık testi: aynı gövde sırayla gönderilir (kullanıcı onay ekranında sayıyı görerek onayladı).
+   * Çalıştırmalar arasında sağlayıcıya göre beklenir (Gemini: 15 sn), 429/503'te görünür geri sayımla yeniden
+   * denenir (src/shared/retry.ts). Her biten çalıştırma kayda yazılır. Denemeler tükenirse, bağlantı koparsa ya da
+   * kullanıcı durdurursa test başarısız sayılmaz, DURAKLATILIR; "Kaldığı yerden devam et" ile sürer.
+   */
+  async function continueConsistency(initial: ConsistencyProgress) {
+    let record = initial
+    const { request, inventory } = record
+    const interval = RUN_INTERVAL_MS[request.provider]
+    const persist = async () => {
+      setProgressRecord(record)
+      setConsistency(exportOf(record))
+      await saveProgress(record)
+    }
+    setError(null)
+    setFallbackOffer(null)
+    await persist()
+    const controller = startCancellable()
+    try {
+      while (!isComplete(record)) {
+        const i = nextRunIndex(record)
+        const total = record.requestedRuns
+        const prefix = `Tutarlılık testi: ${i}/${total}. çalıştırma`
+        try {
+          if (controller.signal.aborted) throw new LlmCancelledError()
+          if (attemptedRuns(record) > 0 && interval > 0) {
+            await waitWithCountdown(
+              interval,
+              (s) => setBusy(`Tutarlılık testi: istek sınırı için bekleniyor, ${i}/${total}. çalıştırma ${s} sn sonra…`),
+              controller.signal,
+            )
+          }
+          setBusy(`${prefix} bekleniyor…`)
+          const { call, retries } = await callLlmWithRetry(request, (s) => setBusy(retryText(prefix, s)), controller.signal)
+          const result = await buildLlmResult(call, request, inventory, tabId, retries)
+          // Şemaya uymayan yanıt istatistiğe girmez; ham yanıtıyla birlikte başarısız çalıştırma olarak kaydedilir.
+          record = result.schemaError
+            ? withFailure(record, {
+                runIndex: i,
+                timestamp: result.run.timestamp,
+                error: result.schemaError,
+                rawResponse: result.run.rawResponse,
+              })
+            : withResult(record, i, result)
+        } catch (e) {
+          if (isTransientFailure(e)) {
+            record = withPause(record, errorText(e))
+            await persist()
+            setError({
+              text: `Tutarlılık testi duraklatıldı (${attemptedRuns(record)}/${total} bitti): ${errorText(e)} Biten çalıştırmalar kaydedildi; "Kaldığı yerden devam et" ile sürdürebilirsiniz.`,
+              canRequestPermission: false,
+              ...(e instanceof LlmCallError && e.diagnostics ? { diagnostics: e.diagnostics } : {}),
+            })
+            offerFallback(request, inventory, e)
+            break
+          }
+          record = withFailure(record, { runIndex: i, timestamp: new Date().toISOString(), error: errorText(e) })
+        }
+        await persist()
+      }
+    } finally {
+      endCancellable()
+      setBusy(null)
+    }
+    // İlk başarılı çalıştırma, rapor görünümü için LLM sonucu olarak da gösterilir (rapora o yazılır).
+    const first = record.results[0]
+    if (first) {
+      setLlm(first.result)
+      setSentBody(request)
+      setLlmInventory(inventory)
+    }
+    if (isComplete(record) && record.results.length === 0 && record.failures[0]) {
+      setError({ text: record.failures[0].error, canRequestPermission: false })
+    }
+  }
+
+  /** Yarım kalan testi sürdürmeden önce: aynı sayfada mıyız, sayfa hâlâ kilitsiz mi? Sonra onay ekranı açılır. */
+  async function prepareResume() {
+    const record = progressRecord
+    if (!record || isComplete(record)) return
+    setError(null)
+    setBusy('Sayfa kontrol ediliyor…')
+    try {
+      const tab = await getActiveTab()
+      const info = await callContent(tab.id, 'getPageInfo')
+      if (!samePage(info.url, record.page.url)) {
+        throw new Error(`Devam etmek için testin başladığı sayfayı açın: ${record.page.url}`)
+      }
+      const sensitivity = detectSensitivePage(await callContent(tab.id, 'collectSensitivitySignals'))
+      const consented = privacy?.consentGiven === true && page !== null && samePage(page.url, record.page.url)
+      if (isLocked(sensitivity.level) && !consented) {
+        throw new Error('Sayfa hassas ya da belirsiz görünüyor. Önce "Bu sayfayı analiz et" ile analiz edip gizlilik onayını verin.')
+      }
+      setTabId(tab.id)
+      setWindowId(tab.windowId)
+      setPending({ request: record.request, inventory: record.inventory, runs: remainingRuns(record), mode: 'resume' })
+    } catch (e) {
+      setError(toUiError(e))
     } finally {
       setBusy(null)
     }
   }
 
-  /**
-   * Tutarlılık testi: aynı gövde sırayla N kez gönderilir (kullanıcı tek onay ekranında N'yi görerek onayladı).
-   * İstek sınırına takılmamak için çalıştırmalar arasında sağlayıcıya göre beklenir (Gemini: 15 sn) ve
-   * 429/503'te üstel beklemeyle yeniden denenir (src/shared/retry.ts).
-   */
-  async function runConsistency(request: LlmRequest, inventory: Inventory, runs: number) {
-    if (!page) return
+  async function discardProgress() {
+    await clearProgress()
+    setProgressRecord(null)
     setConsistency(null)
-    const results: { runIndex: number; result: LlmResult }[] = []
-    const failures: ConsistencyFailure[] = []
-    const interval = RUN_INTERVAL_MS[request.provider]
-    setProgress({ done: 0, total: runs, failed: 0 })
-    for (let i = 1; i <= runs; i++) {
-      if (i > 1 && interval > 0) {
-        setBusy(`Tutarlılık testi: istek sınırı için ${interval / 1000} sn bekleniyor (${i}/${runs}. çalıştırmadan önce)…`)
-        await wait(interval)
-      }
-      setBusy(`Tutarlılık testi: ${i}/${runs}. çalıştırma bekleniyor…`)
-      try {
-        const { call, retries } = await callLlmWithRetry(request, (attempt, delayMs, err) =>
-          setBusy(
-            `Tutarlılık testi: ${i}/${runs}. çalıştırma — ${err.status ?? '?'} hatası; ${Math.round(delayMs / 1000)} sn sonra yeniden denenecek (${attempt}/${MAX_RETRIES})…`,
-          ),
-        )
-        const result = await buildLlmResult(call, request, inventory, tabId, retries)
-        if (result.schemaError) {
-          // Şemaya uymayan yanıt istatistiğe girmez; ham yanıtıyla birlikte başarısız çalıştırma olarak kaydedilir.
-          failures.push({
-            runIndex: i,
-            timestamp: result.run.timestamp,
-            error: result.schemaError,
-            rawResponse: result.run.rawResponse,
-          })
-        } else {
-          results.push({ runIndex: i, result })
-        }
-      } catch (e) {
-        failures.push({ runIndex: i, timestamp: new Date().toISOString(), error: e instanceof Error ? e.message : String(e) })
-      }
-      setProgress({ done: i, total: runs, failed: failures.length })
-    }
-    setBusy(null)
-    setConsistency(buildConsistencyExport({ page, request, inventory, requestedRuns: runs, results, failures }))
-    // İlk başarılı çalıştırma, rapor görünümü için LLM sonucu olarak da gösterilir (rapora o yazılır).
-    if (results[0]) {
-      setLlm(results[0].result)
-      setSentBody(request)
-      setLlmInventory(inventory)
-    }
-    if (failures.length > 0 && results.length === 0) setError({ text: failures[0].error, canRequestPermission: false })
   }
 
   function exportConsistency() {
-    if (!consistency || !page) return
-    downloadJson(`ux-doktor-tutarlilik-${slugForFile(page.host)}-${timestampForFile()}.json`, consistency)
+    if (!consistency) return
+    const host = new URL(consistency.page.url).host
+    downloadJson(`ux-doktor-tutarlilik-${slugForFile(host)}-${timestampForFile()}.json`, consistency)
   }
 
   function exportHallucination() {
@@ -288,6 +477,14 @@ export default function App() {
       <p role="status" aria-live="polite" className="muted">
         {busy}
       </p>
+      {cancellable && (
+        <div className="row">
+          <button type="button" className="secondary" onClick={() => abortRef.current?.abort()}>
+            Durdur
+          </button>
+          <span className="muted">Süren istek bitince durur; tutarlılık testi kaldığı yerden sürdürülebilir.</span>
+        </div>
+      )}
 
       {error && (
         <div className="error-box" role="alert">
@@ -299,6 +496,34 @@ export default function App() {
             </button>
           )}
         </div>
+      )}
+
+      {fallbackOffer && busy === null && (
+        <div className="warning" role="note">
+          <p>
+            <code>{fallbackOffer.fromModel}</code> şu an yanıt veremiyor. İsterseniz aynı envanteri{' '}
+            <code>{FALLBACK_GEMINI_MODEL}</code> ile <strong>ayrı bir deneme</strong> olarak gönderebilirsiniz. Bu sonuç
+            raporda model adıyla ve "elle onaylı yedek model" notuyla yazılır, tutarlılık testi istatistiğine girmez.
+          </p>
+          <div className="row">
+            <button type="button" onClick={prepareFallback}>
+              Flash-Lite ile dene
+            </button>
+            <button type="button" className="secondary" onClick={() => setFallbackOffer(null)}>
+              Vazgeç
+            </button>
+          </div>
+        </div>
+      )}
+
+      {progressRecord && (
+        <ConsistencyResumeCard
+          record={progressRecord}
+          busy={busy !== null}
+          onResume={prepareResume}
+          onExport={exportConsistency}
+          onDiscard={discardProgress}
+        />
       )}
 
       {page && (
@@ -380,7 +605,11 @@ export default function App() {
         <ValidationTools
           disabledReason={llmDisabledReason}
           busy={busy !== null}
-          progress={progress}
+          progress={
+            progressRecord
+              ? { done: attemptedRuns(progressRecord), total: progressRecord.requestedRuns, failed: progressRecord.failures.length }
+              : null
+          }
           consistency={consistency}
           canExportHallucination={llm !== null}
           onStartConsistency={(runs) => prepareLlm(runs)}
@@ -398,6 +627,15 @@ export default function App() {
           transport={requestTransportPreview(pending.request)}
           runIntervalMs={RUN_INTERVAL_MS[pending.request.provider]}
           maxRetries={MAX_RETRIES}
+          note={
+            pending.mode === 'resume'
+              ? `Yarım kalan tutarlılık testinin kalan ${pending.runs} çalıştırması gönderilecek (toplam ${progressRecord?.requestedRuns ?? '?'}; biten çalıştırmalar korunur). Gövde, testin ilk onayındakiyle aynıdır.`
+              : pending.mode === 'fallback'
+                ? `Elle onaylı yedek model denemesi: ${pending.fallbackFrom?.fromModel} yanıt veremedi. Sonuç raporda bu model adıyla yazılır ve tutarlılık testi istatistiğine girmez.`
+                : pending.mode === 'consistency' && progressRecord
+                  ? 'Yeni test başlatılırsa önceki tutarlılık testi kaydı silinir. Önce dışa aktarmak isterseniz İptal deyin.'
+                  : undefined
+          }
           readableUserPayload={buildUserPayload(pending.inventory)}
           onSend={sendLlm}
           onCancel={() => setPending(null)}

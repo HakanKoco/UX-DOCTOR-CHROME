@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_RETRIES, RETRY_MAX_DELAY_MS, RUN_INTERVAL_MS, isRetryableStatus, retryDelayMs, shouldRetry } from './retry'
+import {
+  MAX_RETRIES,
+  RETRY_MAX_DELAY_MS,
+  RUN_INTERVAL_MS,
+  isRetryableStatus,
+  remainingSeconds,
+  retryDelayMs,
+  shouldRetry,
+} from './retry'
 
 describe('isRetryableStatus', () => {
   it('yalnızca geçici hatalar yeniden denenir', () => {
@@ -11,25 +19,41 @@ describe('isRetryableStatus', () => {
 })
 
 describe('retryDelayMs', () => {
-  it('üstel artar: 2s, 4s, 8s, 16s (sapma 0 iken)', () => {
-    expect([1, 2, 3, 4].map((a) => retryDelayMs(a, () => 0))).toEqual([2000, 4000, 8000, 16000])
+  it('üstel artar: 5s, 10s, 20s, 40s, 80s, 120s (sapma 0 iken)', () => {
+    expect([1, 2, 3, 4, 5, 6].map((a) => retryDelayMs(a, () => 0))).toEqual([5000, 10000, 20000, 40000, 80000, 120000])
   })
 
   it('rastgele sapma en çok 1 sn ekler', () => {
-    expect(retryDelayMs(1, () => 0.999)).toBe(2999)
+    expect(retryDelayMs(1, () => 0.999)).toBe(5999)
   })
 
-  it('üst sınır 60 sn', () => {
+  it('üst sınır 120 sn', () => {
     expect(retryDelayMs(10, () => 0.5)).toBe(RETRY_MAX_DELAY_MS)
+    expect(RETRY_MAX_DELAY_MS).toBe(120_000)
+  })
+
+  it('toplam bekleme en çok ≈ 4,6 dk (kullanıcıya görünür, iptal edilebilir)', () => {
+    let total = 0
+    for (let a = 1; a <= MAX_RETRIES; a++) total += retryDelayMs(a, () => 0.999)
+    expect(total).toBeLessThan(5 * 60_000)
   })
 })
 
 describe('shouldRetry', () => {
   it(`en çok ${MAX_RETRIES} yeniden deneme yapılır`, () => {
-    expect(shouldRetry(429, 0)).toBe(true)
-    expect(shouldRetry(429, MAX_RETRIES - 1)).toBe(true)
-    expect(shouldRetry(429, MAX_RETRIES)).toBe(false)
+    expect(MAX_RETRIES).toBe(6)
+    expect(shouldRetry(503, 0)).toBe(true)
+    expect(shouldRetry(503, MAX_RETRIES - 1)).toBe(true)
+    expect(shouldRetry(503, MAX_RETRIES)).toBe(false)
     expect(shouldRetry(400, 0)).toBe(false)
+  })
+})
+
+describe('remainingSeconds', () => {
+  it('yukarı yuvarlar ve 0 altına inmez', () => {
+    expect(remainingSeconds(10_500, 0)).toBe(11)
+    expect(remainingSeconds(1_000, 1_000)).toBe(0)
+    expect(remainingSeconds(0, 5_000)).toBe(0)
   })
 })
 

@@ -69,6 +69,12 @@ export const DEFAULT_PROVIDER: Provider = 'claude'
 export const DEFAULT_CLAUDE_MODEL: ClaudeModelId = 'claude-opus-5-5'
 export const DEFAULT_GEMINI_MODEL: GeminiModelId = 'gemini-3.8-flash'
 
+/**
+ * Asıl Gemini modeli geçici hatayla (503/429) yanıt veremezse panelin önerdiği, YALNIZCA kullanıcının elle
+ * onayladığı yedek model ("Flash-Lite ile dene"). Otomatik geçiş yapılmaz: tutarlılık testi tek model ister.
+ */
+export const FALLBACK_GEMINI_MODEL: GeminiModelId = 'gemini-3.5-flash-lite'
+
 /** Claude'da tüm çalıştırmalarda sabit tutulan effort düzeyi (Opus 5.5 varsayılanı da "medium"; açıkça yazıyoruz). */
 export const FIXED_EFFORT = 'medium' as const
 
