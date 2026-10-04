@@ -281,10 +281,15 @@ npm run build
 npm run typecheck
 npm test
 npm run test:browser
+npm run teslim-kontrol             # raporlar, yer tutucular, anahtar (geçmiş dahil), commit önekleri, izinler
 git status                         # beklenmeyen dosya yok mu?
 git grep -n "sk-ant-api" || echo "anahtar yok"   # gerçek anahtar repoda OLMAMALI
 git grep -n "<Gemini anahtarının ilk 10 karakteri>" || echo "anahtar yok"   # Gemini kullandıysan
 ```
+
+`npm run teslim-kontrol` her kontrolü ✓ / × olarak listeler. Teslimden önce hepsinin ✓ olması gerekir. Betik
+yalnızca denetler; hiçbir değeri senin yerine yazmaz. Kendi anahtarının ilk karakterleriyle yapılan `git grep`
+kontrolünü yine de çalıştır: betik yalnızca bilinen önekleri arar.
 
 Kontrol listesi:
 

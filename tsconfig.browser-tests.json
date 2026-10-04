@@ -20,5 +20,5 @@
     "isolatedModules": true,
     "skipLibCheck": true
   },
-  "include": ["tests/browser", "vitest.browser.config.ts"]
+  "include": ["tests/browser", "vitest.browser.config.ts", "scripts/teslim-kontrol.check.ts", "vitest.teslim.config.ts"]
 }

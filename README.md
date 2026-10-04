@@ -695,6 +695,7 @@ npm run build       # tip kontrolü + derleme (dist/)
 npm run typecheck   # yalnızca tip kontrolü (tsc -b)
 npm test            # Vitest birim testleri (Node)
 npm run test:browser  # tarayıcı testleri (önce npm run build; yüklü Chrome gerekir)
+npm run teslim-kontrol  # teslim öncesi denetim (raporlar, yer tutucular, anahtar, commit, izinler)
 npm run dev         # CRXJS geliştirme sunucusu (HMR)
 ```
 
@@ -730,6 +731,19 @@ Commit öncesi: `npm run build`, `npx tsc --noEmit -p tsconfig.app.json`, `npm t
 geçmelidir. Kök
 `tsconfig.json` yalnızca referans içerdiği için kökte `npx tsc --noEmit` hiçbir dosyayı denetlemez; bu yüzden `-p`
 ile alt yapılandırma ya da `npm run typecheck` kullanın.
+
+**Teslim kontrolü** (`npm run teslim-kontrol`, `scripts/teslim-kontrol.check.ts`): yeni bağımlılık olmadan Vitest'in
+ayrı bir yapılandırmasıyla çalışır ve her kontrolü geçti (✓) / kaldı (×) olarak listeler:
+- `reports/` altındaki site raporları rapor şemasına (`validateReport`, `src/shared/report.ts`) uyuyor mu; sağlık,
+  e-ticaret ve kamu raporları (`saglik-*`, `eticaret-*`, `kamu-*`) var mı; tutarlılık/halüsinasyon dosyaları doğru türde mi,
+- README ve `docs/` içinde doldurulmamış ölçüm yer tutucusu kaldı mı (ters tırnak ve kod bloğu içindeki talimatlar sayılmaz),
+- çalışma ağacında ve tüm commit geçmişinde `sk-ant-`, `AIza`, `AQ.` önekli uzun dizeler var mı (`TEST-ONLY` işaretli
+  sahte test değerleri ayrıca listelenir),
+- commit sayısı ve Conventional Commits önekleri,
+- manifest izinleri bu README'deki izin tablosuyla birebir aynı mı.
+
+Betik hiçbir ölçüm değeri üretmez ve dosya değiştirmez. Öğrenci işleri (raporlar, ölçümler) bitene kadar ilgili
+kontroller "kaldı" görünür; bu beklenen durumdur.
 
 ## Teslim kontrol listesi
 

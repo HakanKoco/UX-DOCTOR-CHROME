@@ -227,3 +227,107 @@ export interface UxReport {
    */
   llmRequestPreview?: unknown
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Çalışma zamanı doğrulayıcısı (npm run teslim-kontrol, reports/ altındaki dosyalar için). Yukarıdaki tiplerle aynı
+// dosyada durur ki şema tek kaynakta kalsın; reportBuilder çıktısının buradan geçtiği birim testle güvenceye alınır.
+// Yalnızca yapıyı denetler; hiçbir değeri üretmez ya da düzeltmez.
+
+const FINDING_SOURCES: readonly FindingSource[] = ['deterministic', 'llm']
+const DETERMINISTIC_CATEGORIES: readonly DeterministicCategoryId[] = [
+  'contrast',
+  'text-alternatives',
+  'form-labels',
+  'target-size',
+  'language',
+  'other-wcag',
+]
+const NORMAN_PRINCIPLES: readonly NormanPrincipleId[] = [
+  'visibility',
+  'feedback',
+  'constraints',
+  'mapping',
+  'consistency',
+  'affordance',
+]
+
+type Obj = Record<string, unknown>
+const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v)
+const isStr = (v: unknown): v is string => typeof v === 'string'
+const isNumOrNull = (v: unknown) => v === null || (typeof v === 'number' && Number.isFinite(v))
+const isScore = (v: unknown) => v === null || (typeof v === 'number' && v >= 0 && v <= 100)
+
+function checkFinding(f: unknown, path: string, errors: string[]) {
+  if (!isObj(f)) return void errors.push(`${path}: nesne değil`)
+  for (const key of ['id', 'selector', 'rule', 'ruleId', 'description', 'fix'] as const) {
+    if (!isStr(f[key])) errors.push(`${path}.${key}: metin değil`)
+  }
+  if (!FINDING_SOURCES.includes(f.source as FindingSource)) errors.push(`${path}.source: geçersiz (${String(f.source)})`)
+  if (!SEVERITIES.includes(f.severity as Severity)) errors.push(`${path}.severity: geçersiz (${String(f.severity)})`)
+  const categories: readonly string[] = f.source === 'llm' ? NORMAN_PRINCIPLES : DETERMINISTIC_CATEGORIES
+  if (!categories.includes(f.category as string)) errors.push(`${path}.category: geçersiz (${String(f.category)})`)
+  if (f.source === 'llm' && !isStr(f.elementId)) errors.push(`${path}.elementId: LLM bulgusunda zorunlu`)
+  if (!isObj(f.evidence) || typeof f.evidence.highlightable !== 'boolean') errors.push(`${path}.evidence: geçersiz`)
+}
+
+function checkLayer(layer: unknown, path: string, errors: string[]) {
+  if (!isObj(layer)) return void errors.push(`${path}: nesne değil`)
+  if (!isScore(layer.score)) errors.push(`${path}.score: 0-100 ya da null değil`)
+  if (!Array.isArray(layer.categories)) return void errors.push(`${path}.categories: dizi değil`)
+  layer.categories.forEach((c, i) => {
+    if (!isObj(c) || !isStr(c.id) || !isScore(c.score)) errors.push(`${path}.categories[${i}]: geçersiz`)
+  })
+}
+
+/** UxReport yapısını denetler; hata yoksa boş dizi döner. */
+export function validateReport(value: unknown): string[] {
+  const errors: string[] = []
+  if (!isObj(value)) return ['kök: nesne değil']
+  const r = value
+  if (!isStr(r.schemaVersion)) errors.push('schemaVersion: metin değil')
+  if (!isObj(r.tool) || r.tool.name !== 'UX Doktor' || !isStr(r.tool.version)) errors.push('tool: geçersiz')
+  if (!isStr(r.generatedAt) || Number.isNaN(Date.parse(r.generatedAt))) errors.push('generatedAt: tarih değil')
+  if (!isObj(r.page) || !isStr(r.page.url) || !isStr(r.page.title)) errors.push('page: url/title eksik')
+
+  if (!isObj(r.privacy)) errors.push('privacy: nesne değil')
+  else {
+    if (!['safe', 'uncertain', 'sensitive'].includes(r.privacy.level as string)) errors.push('privacy.level: geçersiz')
+    if (typeof r.privacy.consentGiven !== 'boolean') errors.push('privacy.consentGiven: boolean değil')
+  }
+
+  if (!isObj(r.deterministic)) errors.push('deterministic: nesne değil')
+  else {
+    if (r.deterministic.engine !== 'axe-core') errors.push('deterministic.engine: axe-core değil')
+    if (!Array.isArray(r.deterministic.findings)) errors.push('deterministic.findings: dizi değil')
+    else r.deterministic.findings.forEach((f, i) => checkFinding(f, `deterministic.findings[${i}]`, errors))
+    if (!Array.isArray(r.deterministic.manualReview)) errors.push('deterministic.manualReview: dizi değil')
+  }
+
+  if (r.llm !== null) {
+    if (!isObj(r.llm)) errors.push('llm: nesne ya da null değil')
+    else {
+      const run = r.llm.run
+      if (!isObj(run)) errors.push('llm.run: nesne değil')
+      else {
+        if (run.provider !== 'claude' && run.provider !== 'gemini') errors.push('llm.run.provider: geçersiz')
+        for (const key of ['runId', 'timestamp', 'requestedModel', 'servedModel', 'promptVersion', 'rawResponse'] as const) {
+          if (!isStr(run[key])) errors.push(`llm.run.${key}: metin değil`)
+        }
+      }
+      if (!Array.isArray(r.llm.answers)) errors.push('llm.answers: dizi değil')
+      if (!Array.isArray(r.llm.findings)) errors.push('llm.findings: dizi değil')
+      else r.llm.findings.forEach((f, i) => checkFinding(f, `llm.findings[${i}]`, errors))
+      if (!isObj(r.llm.hallucination)) errors.push('llm.hallucination: nesne değil')
+    }
+  }
+
+  if (!isObj(r.scores)) errors.push('scores: nesne değil')
+  else {
+    checkLayer(r.scores.deterministic, 'scores.deterministic', errors)
+    if (r.scores.llm !== null) checkLayer(r.scores.llm, 'scores.llm', errors)
+    if (!isScore(r.scores.overall)) errors.push('scores.overall: 0-100 ya da null değil')
+    if (!isStr(r.scores.formulaVersion)) errors.push('scores.formulaVersion: metin değil')
+    if (!isObj(r.scores.layerWeights) || !isNumOrNull(r.scores.layerWeights.deterministic)) errors.push('scores.layerWeights: geçersiz')
+  }
+  return errors
+}
