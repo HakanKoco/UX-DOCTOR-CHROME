@@ -436,89 +436,111 @@ kılar.
 ## Skor formülü ve gerekçesi
 
 Tüm ağırlıklar tek dosyadadır: [`src/scoring/weights.ts`](src/scoring/weights.ts). Formül:
-[`src/scoring/score.ts`](src/scoring/score.ts) (birim testli). Sürüm: `skor-v2`.
+[`src/scoring/score.ts`](src/scoring/score.ts) (birim testli). Sürüm: `skor-v3`.
 
 **Şiddet ağırlıkları:** w(Kritik) = 4, w(Yüksek) = 3, w(Orta) = 2, w(Düşük) = 1.
 
-**1. Deterministik skor (skor-v2: şiddet ağırlıklı doygunluk eğrisi)**
+**1. Deterministik skor (skor-v3: kategori geometrik ortalaması + benzersiz kural terimi)**
 
 ```
 Kural cezası       p_r = w(şiddet_r) × (1 + log₂ n_r)          n_r: kuralı ihlal eden öğe sayısı
 Kategori cezası    D_c = Σ p_r  (kategorideki ihlal edilen kurallar)
-Kategori alt skoru S_c = 100 × e^(−D_c / k)
-Toplam ceza        D   = Σ_c α_c × D_c ,   α_c = 6 × ağırlık_c  (ağırlıkların ortalaması 1)
-Deterministik skor S   = 100 × e^(−D / k) ,   k = 25
+Kategori alt skoru S_c = 100 × e^(−D_c / 25)
+Kategori yarısı    K   = 100 × Π_c (S_c / 100)^(ağırlık_c)       ağırlıklı geometrik ortalama, üsler toplamı 1
+Kural yarısı       T   = 100 × e^(−R / 20) ,  R = Σ w(şiddet_r)  her benzersiz kural bir kez; öğe sayısı girmez
+Deterministik skor S   = ½ × K + ½ × T
 ```
 
+*Gerekçe (üç cümle):* Skorun yarısı sorunların **hangi alanda ne kadar yoğunlaştığını** (kategori skorlarının
+ağırlıklı geometrik ortalaması), yarısı **kaç farklı türde ve hangi şiddette** sorun olduğunu (benzersiz kural
+terimi) ölçer. Geometrik ortalama tek bir kötü kategoriyi diğerlerinin 100'üyle örtmez; kural terimi ise öğe
+sayısından bağımsız olduğu için aynı şablon hatasının yüzlerce kopyası skoru tek başına sıfıra itemez. Geçen öğe
+sayısı hiçbir terime girmez, bu yüzden aynı ihlaller 10 kat büyük bir sayfada aynı skoru verir.
+
 Bir kuralın şiddeti, o kuralı ihlal eden öğelerin en yüksek şiddetidir. Kategoride hiç denetlenen öğe yoksa (geçen
-yok, ihlal yok) kategori **uygulanamaz** (null) olur ve toplama katkı vermez. axe'in `incomplete` sonuçları kesin
-olmadığı için skora girmez.
+yok, ihlal yok) kategori alt skoru **uygulanamaz** (null) olur; cezası 0 olduğundan toplamı etkilemez. axe'in
+`incomplete` sonuçları kesin olmadığı için skora girmez.
 
-*Neden değişti (skor-v1 → skor-v2):* Eski formül `S_c = 100 × geçen / (geçen + Σ w)` idi ve kategori skorlarının
-ağırlıklı **ortalaması** alınıyordu. samsun.edu.tr'de gözlenen durum: 5 Yüksek dokunma hedefi ihlali varken skor
-99.0 çıktı. Bunun iki nedeni vardı:
-1. Geçen öğe sayısı (büyük sayfada binlerce) ihlalleri eritiyordu; sayfa büyüdükçe skor şişiyordu.
-2. İhlal yalnızca ağırlığı 0,10 olan bir kategorideyken, diğer kategoriler 100 olduğu için ortalama yine ~99'da
-   kalıyordu.
+*Neden değişti (skor-v2 → skor-v3):* skor-v2'de toplam `100 × e^(−Σ 6·ağırlık_c·D_c / 25)` idi. Bu, kategori
+skorlarının **çarpımına** eşittir ve üslerin toplamı 1 değil **6**'dır: altı kategorinin her biri 70 olsa bile toplam
+100 × 0,7⁶ = 11,8 çıkar. Gerçek sitelerde skorlar bu yüzden 2-12 aralığına yığıldı. saglik.org.tr raporunda cezanın
+%62'si, Hepsiburada raporunda %81'i kuralların kendisinden değil, aynı kuralın öğe sayısından (log₂ n terimi) geliyordu.
 
-*Değerlendirilen seçenekler:*
+*Eski/yeni skorlar (gerçek raporlar, 2026-10-06; değerler `skor-v2` ile dışa aktarılan JSON'lardan, yeni değerler
+aynı bulgulara skor-v3 uygulanarak hesaplandı):*
 
-| Seçenek | S1: 5 Yüksek, tek kural | S1, 10 kat büyük sayfa | 3 Kritik + 2 Yüksek kural, çok öğe | Karar |
-|---|---|---|---|---|
-| A. Kural başına ceza + üst sınır: `100 − Σ min(2W, W(1+log₂n))` | 76 | 76 | 0 | Kötü sayfalar 0'a yığılır, birbirinden ayrılamaz |
-| B. İhlalli öğe oranı | ~96 | ~99.6 | sayfaya bağlı | Sayfa büyüklüğüne bağlı kalır; asıl sorunu çözmez |
-| **C. Doygunluk eğrisi (seçildi)** + ağırlıklı ceza toplamı | **78.7** | **78.7** | **~2** | 0-100 dışına çıkamaz; kötü sayfalar arasında da ayrım kalır |
+| Site | Benzersiz kural (R) | İhlalli öğe | skor-v2 | Kategori yarısı K | Kural yarısı T | **skor-v3** |
+|---|---|---|---|---|---|---|
+| samsun.edu.tr | 2 (6) | 4 | 74.5 | 95.2 | 74.1 | **84.6** |
+| tr.wikipedia.org | 3 (10) | 7 | 41.3 | 86.3 | 60.7 | **73.5** |
+| www.ankara.bel.tr | 4 (14) | 38 | 8.3 | 66.1 | 49.7 | **57.9** |
+| www.saglik.org.tr | 5 (18) | 31 | 11.5 | 69.7 | 40.7 | **55.2** |
+| www.hepsiburada.com ¹ | 5 (16) | 127 | 2.7 | 54.6 | 44.9 | **49.8** |
+| www.acibadem.com.tr ¹ | 7 (21) | 121 | 3.6 | 57.4 | 35.0 | **46.2** |
 
-Toplama yöntemi de karşılaştırıldı. C ile kategori ortalaması alınsaydı S1 için skor **96.7** olurdu, yani sorun
-sürerdi. Ağırlıklı ceza toplamıyla **78.7** olur.
+¹ Raporda `page.loadState.status = network-busy`: analiz sırasında sayfa hâlâ kaynak yüklüyordu; bulgular
+değişebilir. MHRS raporu dışa aktarılmadığı için tabloda yoktur. Bu raporlar formül kararı için kullanıldı;
+teslim edilen `reports/` dosyaları skor-v3 ile yeniden alınır.
 
-*k = 25 seçiminin gerekçesi:* k, "ne kadar ceza skoru yarıya indirir" sorusunun ayarıdır (D = k·ln2 ≈ 17,3'te
-skor 50). Hedeflenen davranış:
+*Değerlendirilen seçenekler* (aynı altı rapor; tam tablo GEREKSINIMLER.md karar notunda):
 
-| Durum | D | Skor |
-|---|---|---|
-| İhlal yok | 0 | 100 |
-| Tek öğede tek Düşük ihlal | 1 | 96.1 |
-| Tek öğede tek Kritik ihlal | 4 | 85.2 |
-| Aynı Yüksek kuralda 5 öğe, kontrast kategorisinde (α = 1,5) | 14.9 | 55.0 |
-| Aynı Yüksek kuralda 5 öğe, dokunma hedefinde (α = 0,6) — samsun örneği | 5.98 | 78.7 |
-| D = k | 25 | 36.8 |
-| 3 Kritik + 2 Yüksek kural, her biri 10-20 öğe | ~95 | ~2 |
+| Seçenek | Gerçek siteler | Tek Kritik ihlal | Sorun |
+|---|---|---|---|
+| skor-v2 (k = 25) | 2.7-74.5 | 82.5 | Üsler toplamı 6; kötü siteler 2-12'ye yığılır |
+| Aynı yapı, k = 40 / 50 / 100 | 10.4-83.2 / 16.3-86.3 / 40.4-92.9 | 88.7 / 90.8 / 95.3 | Aynı D'nin ölçeklenmesi: sıralama hiç değişmez, yalnızca skorlar yükselir |
+| Yalnızca geometrik ortalama (≡ k = 150) | 54.6-95.2 | 96.9 | Tek Kritik ihlal yalnızca 3 puan düşürür |
+| Şiddet bantları (Kritik varsa ≤ 70) | 23.6-69.6 | 70.0 | Tek Kritik ihlal sert; neredeyse her site aynı tavanda |
+| ½ en kötü kategori + ½ ortalama | 40.5-84.5 | 91.1 | Sıralamayı bozar: 6 kurallı test sayfası (bilinen-hatalar) 82.2, tek kuralda 5 öğe 79.5 |
+| **½ geometrik ortalama + ½ kural terimi (seçildi)** | **46.2-84.6** | **89.4** | Tek kuralda çok öğe hafif sayılır (aşağıda) |
 
-k = 10 olsaydı tek bir Kritik ihlal skoru 67'ye indirirdi ve orta düzeyde sorunlu sayfalar hızla 0'a yığılırdı.
-k = 50 olsaydı samsun örneği 88.7 çıkar, ihlaller yine görünmez kalırdı. 25, tek ve tekil bir sorunu "iyi ama
-kusurlu" (80-95), birkaç kuralı "orta" (40-80), çok kurallı sayfaları "kötü" (<20) bölgeye yerleştiren değerdir.
-Bu bir uzman yargısıdır; ampirik olarak kalibre edilmemiştir (bkz. Bilinen sınırlamalar).
+½/½ oranının duyarlılığı: 0,6/0,4 ile altı sitenin skoru 1-3 puan yükseldi (46.2 → 48.4 … 84.6 → 86.8), sıralama
+değişmedi. Bu yüzden en sade oran olan ½/½ seçildi.
 
-*Örnek hesap (samsun.edu.tr gözlemi):*
-1. `target-size` kuralında 5 öğe, şiddet Yüksek (w = 3) → p = 3 × (1 + log₂5) = 3 × 3,32 = 9,97.
-2. Dokunma hedefi kategorisi: S_c = 100 × e^(−9,97/25) = **67.1**.
-3. Toplam: α = 6 × 0,10 = 0,6 → D = 5,98 → S = 100 × e^(−5,98/25) = **78.7**.
-4. Geçen öğe sayısı 10 ya da 1000 katına çıksa da skor 78.7 kalır.
+*Bilerek kabul edilen ödünleşim:* Aynı kuralın çok öğede ihlali (çoğunlukla tek bir şablon ya da CSS kuralı) kural
+yarısını hiç değiştirmez, yalnızca kategori yarısını log₂ n ile düşürür. Tek Kritik kural 1 öğede 89.4, 1000 öğede
+76.1 verir. Beş farklı Yüksek kural ise 69.3 verir. Geliştirici açısından tek düzeltmeyle kapanan bir şablon hatası,
+beş ayrı sorundan hafiftir. Kullanıcı açısından ise 1000 alt metinsiz görsel 1000 ayrı engeldir. Bu nedenle öğe
+sayıları raporda ve bulgu listesinde aynen gösterilir (bkz. Bilinen sınırlamalar).
 
-*Diğer gerekçeler:*
-- log₂ sönümleme: aynı hatanın 50 kopyası (ör. şablondaki tek bir eksik alt metin), 50 farklı hata kadar ağır
-  sayılmaz. Ama 5 farklı kural, aynı kuralda 5 öğeden ağır basar (birim testli).
-- Geçen öğe sayısı yalnızca kategorinin uygulanabilir olup olmadığını belirler; skora girmez.
+*Sabitler:* k = 25 kategori eğrisini (tek Kritik ihlal kategoriyi 85.2'ye indirir), RULE_K = 20 kural terimini
+(tek Kritik kural 81.9, beş farklı Kritik kural 36.8) belirler. Bunlar uzman yargısıdır; ampirik olarak kalibre
+edilmemiştir.
+
+| Birim testli durum | skor-v3 |
+|---|---|
+| İhlal yok | 100 |
+| Tek öğede tek Kritik ihlal | 89.4 |
+| 5 farklı Yüksek kural, birer öğe | 55-85 arası |
+| Aynı ihlaller, geçen öğe sayısı 10 ya da 1000 kat | aynı skor |
+| Herhangi bir şiddet, 1-1000 öğe, 1-10 kural | 0-100 arası |
 
 **2. Norman ilke skoru** (her ilke p için, LLM cevaplarından **kod** hesaplar):
 
 ```
 S_p = 100 × Σ w(evet) / (Σ w(evet) + Σ w(hayır))
+Kapsam: evet ya da hayır ile yanıtlanan soru sayısı < 3 ise ilke "yetersiz kapsam" olur ve ortalamaya girmez.
 ```
 
-w: sorunun rubrikteki şiddet ağırlığı. "Belirsiz" cevaplar skora girmez. Kanıtı geçersiz olduğu için belirsize
-düşen "hayır"lar da girmez. İlkede hiç evet/hayır yoksa skor uygulanamaz olur.
+w: sorunun rubrikteki şiddet ağırlığı. "Belirsiz" cevaplar skora girmez. Kanıtı olmadığı ya da envanterde olmayan
+bir kimliğe dayandığı için belirsize düşen "hayır"lar da resmi skora girmez ("kanıtı olmayan bulgu, bulgu sayılmaz"),
+ama ilke başına **ayrı sayılır** (`evidencelessNo`, `hallucinatedNo`).
+
+*Kapsam eşiği (skor-v3):* Bir ilke tek bir "evet" ile 100 alıp toplama tam ağırlıkla giremez. Panel ve rapor genel
+kapsamı ("kapsam 19/29 soru") ve yetersiz kapsamlı ilkeleri gösterir.
+
+*Bilgi amaçlı katı skor:* `scores.llm.strictScore`, belirsize düşen "hayır"lar "hayır" sayılsaydı LLM skorunun ne
+olacağını gösterir. Resmi skor ve toplam bunu kullanmaz; amaç, kanıtsız cevapların skoru ne kadar etkilediğini
+görünür kılmaktır. Gerçek raporlarda: saglik.org.tr resmi 84.2 / katı 75.4, samsun.edu.tr 90.4 / 77.7; diğer dört
+sitede kanıtsız "hayır" yoktu.
 
 *Gerekçe:* LLM'e puan verdirmek tekrarlanabilir değildir. Evet/hayır cevapları ve sabit şiddet ağırlıkları
 kullanılınca skor denetlenebilir hale gelir: her puan farkı belirli bir sorunun cevabına kadar izlenebilir.
 Statik analizle karar verilemeyen durumlar "belirsiz" olarak skoru yapay şekilde düşürmez.
 
 **3. Katman skorları:**
-- **LLM:** ilke alt skorlarının ağırlıklı ortalaması. Uygulanamayan ilkeler çıkarılır, kalan ağırlıklar yeniden
-  ölçeklenir.
-- **Deterministik:** ortalama değil, yukarıdaki ağırlıklı ceza toplamı. Kategori ağırlığı cezanın çarpanıdır
-  (α_c = 6 × ağırlık).
+- **LLM:** ilke alt skorlarının ağırlıklı ortalaması. Uygulanamayan ya da yetersiz kapsamlı ilkeler çıkarılır,
+  kalan ağırlıklar yeniden ölçeklenir.
+- **Deterministik:** yukarıdaki iki yarının ortalaması. Kategori ağırlığı, geometrik ortalamada kategorinin üssüdür.
 
 | Deterministik kategori | Ağırlık | | Norman ilkesi | Ağırlık |
 |---|---|---|---|---|
@@ -547,7 +569,7 @@ panelde ve raporda **ayrı** gösterilir.
 
 ## Rapor biçimi
 
-Şemanın tek kaynağı [`src/shared/report.ts`](src/shared/report.ts) dosyasıdır (`schemaVersion: 1.2.0`).
+Şemanın tek kaynağı [`src/shared/report.ts`](src/shared/report.ts) dosyasıdır (`schemaVersion: 1.5.0`).
 - **1.1.0:** çalıştırma kaydına `provider`, `retries` ve `parameters.thinkingLevel` eklendi; `llmRequestPreview`
   `{provider, model, body}` biçimine geçti.
 - **1.2.0:**
@@ -556,6 +578,14 @@ panelde ve raporda **ayrı** gösterilir.
   - `privacy.level` (`safe` | `uncertain` | `sensitive`), `strongReasons`, `weakReasons`,
   - `llm.malformedAnswers`, `llm.schemaError`,
   - `scores.deterministic.penalty` (skor-v2).
+- **1.3.0:** `page.loadState` (analiz anındaki yükleme durumu).
+- **1.4.0:** `Finding.thirdParty` (üçüncü taraf çerez/onay bileşeni etiketi).
+- **1.5.0 (skor-v3):**
+  - `scores.deterministic.components` (kategori yarısı, kural yarısı, R, benzersiz kural sayısı),
+  - `scores.llm.coverage` (yanıtlanan soru sayısı, yetersiz kapsamlı ilkeler) ve `scores.llm.strictScore`
+    (bilgi amaçlı katı skor),
+  - LLM ilke ayrıntısında `answered`, `questions`, `insufficientCoverage`, `evidencelessNo`, `hallucinatedNo`,
+  - tutarlılık dışa aktarımında `formulaVersion`, çalıştırma başına `llmStrictScore` ve `answeredQuestions`.
 
 Raporun ana alanları:
 
@@ -675,6 +705,15 @@ Kontrol iki aşamalıdır:
   bulgularında listelenirler ama vurgulanamazlar.
 - **Envanter sınırı:** en çok 200 öğe; çok büyük sayfalarda kesilir (rapora yazılır). LLM yalnızca gördüğü öğeler
   hakkında karar verir.
+- **Kanıtsız "evet" ile kanıtsız "hayır" farklı işlenir:** Doğrulayıcı, kanıt kimliği olmayan "hayır"ı belirsize
+  düşürür (bulgu sayılmaz, resmi skora girmez), ama kanıt kimliği olmayan "evet"i olduğu gibi sayar. "Evet" çoğu
+  zaman sayfanın geneli hakkında bir yargıdır (ör. "menü tüm sayfalarda aynı yerde") ve tek bir öğeye bağlanamaz.
+  Bu asimetri LLM skorunu yukarı çekebilir: saglik.org.tr raporunda (2026-10-06) 18 "evet"in 11'inde kanıt kimliği
+  yoktu. Prompt ve doğrulayıcı bilerek değiştirilmedi. Kanıtsız "hayır"ların etkisi bilgi amaçlı katı skorla, kapsam
+  ise panelde gösterilir.
+- **LLM kapsam eşiği skoru iki yönde de değiştirebilir:** 3 sorudan azı yanıtlanan ilke ortalamadan çıkarılır. Bu
+  ilke yüksekse LLM skoru düşer, düşükse yükselir (gerçek raporlarda: saglik.org.tr 89.5 → 84.2, tr.wikipedia.org
+  73.4 → 81.7). Amaç skoru düşürmek değil, az kanıtlı bir ilkenin toplamı belirlemesini önlemektir.
 - **Dinamik sayfalar:** Analizden sonra DOM değişirse seçiciler eşleşmeyebilir. Seçici kontrolü bunu raporlar.
 - **LLM değişkenliği:** Opus 5.5 ve Sonnet 5.5 `temperature` kabul etmez. Tutarlılık için effort sabitlenir ve rubrik
   kapalı uçludur, ancak çalıştırmalar arası fark tamamen sıfırlanamaz. Bu fark tutarlılık testiyle ölçülür.
@@ -740,7 +779,8 @@ Kontrol iki aşamalıdır:
   durumda vurgulama kullanılabilir.
 - **activeTab ve yan panel:** Resmi doküman, simgeye tıklanınca açılan yan panelin activeTab verip vermediğini
   belirtmiyor. Verilmezse panel bunu söyler ve isteğe bağlı site izni sunar.
-- **Kural ağırlıkları** (şiddet, kategori ve katman ağırlıkları) ve doygunluk sabiti **k = 25** uzman yargısıdır; ampirik olarak kalibre edilmemiştir.
+- **Kural ağırlıkları** (şiddet, kategori ve katman ağırlıkları), doygunluk sabitleri **k = 25** ve **RULE_K = 20**, deterministik skorun **½/½** oranı ve LLM kapsam eşiği (**3 soru**) uzman yargısıdır; ampirik olarak kalibre edilmemiştir. Oran ve sabitler altı gerçek raporla denetlendi (bkz. "Skor formülü"), ama bu bir kalibrasyon değildir.
+- **Şablon hataları deterministik skorda hafif sayılır** (skor-v3): aynı kuralın çok öğede ihlali kural yarısını değiştirmez, yalnızca kategori yarısını log₂ n ile düşürür (tek Kritik kural: 1 öğede 89.4, 1000 öğede 76.1). Kullanıcı açısından her öğe ayrı bir engel olabileceği için öğe sayıları raporda ve bulgu listesinde aynen gösterilir; skoru tek başına yorumlamayın.
 
 ---
 

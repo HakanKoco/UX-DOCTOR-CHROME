@@ -20,9 +20,9 @@ Durum değerleri:
 | R06 | 24x24 px altı dokunma hedefi kontrolü | 2.a | 2 | src/content | Tamamlandı (target-size, açıkça etkinleştirildi) |
 | R07 | Sayfa dili tanımı kontrolü | 2.a | 2 | src/content | Tamamlandı (html-has-lang, html-lang-valid, valid-lang, html-xml-lang-mismatch) |
 | R08 | Yorumsal katman: LLM ile Norman'ın 6 ilkesi (rubrik) | 2.b | 4 | src/background, src/shared | Tamamlandı (6 ilke × 4-5 soru, yapılandırılmış JSON, puanı kod hesaplar; sağlayıcı Claude API ya da Gemini API) |
-| R09 | Her ilke/kategori için 0-100 alt skor | 2 (Skorlama) | 5 | src/scoring | Tamamlandı (skor-v2: kategori alt skoru 100·e^(−D_c/25); src/scoring/score.ts) |
-| R10 | Ağırlıklı toplam skor | 2 (Skorlama) | 5 | src/scoring | Tamamlandı (deterministik: ağırlıklı ceza toplamı 100·e^(−Σα_c·D_c/25), sayfa büyüklüğünden bağımsız; toplam 0.6 deterministik + 0.4 LLM; ağırlıklar ve k src/scoring/weights.ts) |
-| R11 | Skor formülü ve gerekçesi README'de | 2 (Skorlama), 6 | 7 | README.md | Tamamlandı (README: formül, seçenek karşılaştırması, k = 25 gerekçesi, örnek hesap) |
+| R09 | Her ilke/kategori için 0-100 alt skor | 2 (Skorlama) | 5 | src/scoring | Tamamlandı (skor-v3: kategori alt skoru 100·e^(−D_c/25); LLM ilkesi 3'ten az yanıtla "yetersiz kapsam"; src/scoring/score.ts) |
+| R10 | Ağırlıklı toplam skor | 2 (Skorlama) | 5 | src/scoring | Tamamlandı (skor-v3 deterministik: ½ · kategori skorlarının ağırlıklı geometrik ortalaması + ½ · 100·e^(−R/20), sayfa büyüklüğünden bağımsız; toplam 0.6 deterministik + 0.4 LLM; ağırlıklar ve sabitler src/scoring/weights.ts) |
+| R11 | Skor formülü ve gerekçesi README'de | 2 (Skorlama), 6 | 7 | README.md | Tamamlandı (README: formül, 3 cümlelik gerekçe, altı gerçek raporla eski/yeni tablo, seçenek karşılaştırması, ½/½ duyarlılığı) |
 | R12 | Deterministik ve LLM skorları ayrı gösterilir | 2 (Skorlama) | 5 | src/sidepanel | Tamamlandı (yan panelin üstünde iki ayrı skor kartı + JSON'da ayrı alanlar) |
 | R13 | Bulguda ilgili DOM öğesi (CSS seçici) | 2 (Bulgu) | 2 / 4 | src/content, src/shared | Tamamlandı (deterministik + LLM elementId/selector; Chrome çevirisinin <font> sarmalayıcıları seçiciye girmez) |
 | R14 | Bulguda sayfada vurgulama veya ekran görüntüsü | 2 (Bulgu) | 2 / 5 | src/content | Tamamlandı (vurgulama + isteğe bağlı kırpılmış ekran görüntüsü, yalnızca yerel) |
@@ -144,14 +144,49 @@ içerebilir (README "Gizlilik ve güvenlik").
 
 Bilerek **kullanılmayan**: `content_scripts` (her sayfaya otomatik enjeksiyon yok), geniş `host_permissions`, `debugger`, `tabs`, `contentSettings`, `downloads` (dışa aktarma `<a download>` ile yapılır). Derleme sırasında CRXJS'in eklediği `web_accessible_resources` kaydı vite.config.ts içindeki eklentiyle silinir (sayfalar eklentiyi tespit edemesin).
 
-## Karar bekliyor: üç gerçek rapor sonrası k değerlendirmesi
+## Karar: skor-v3 (2026-10-06)
 
-Karar (2026-10-04, öğrenci): skor-v2 (k = 25) değiştirilmeden kalır. Üç gerçek site raporu (`reports/saglik-*`,
-`eticaret-*`, `kamu-*`) çıktıktan sonra deterministik skor dağılımına bakılır. Siteler 0-20 aralığına yığılıyorsa
-k (ör. 40) ya da toplama yöntemi yeniden değerlendirilir. Değişiklik olursa `FORMULA_VERSION` artırılır ve README
-"Skor formülü" güncellenir. k'yı değiştirmek sitelerin sıralamasını değiştirmez, yalnızca puanların yayılımını
-değiştirir. Kategori ortalaması önerilmedi: altı kategorisinin hepsinde ihlal olan test sayfasını 85,8'e
-çıkarıp sorunları gizliyor (araç tarafı ölçüm, test sayfaları üzerinde; gerçek site değeri değildir).
+Önceki not (2026-10-04): skor-v2 (k = 25), gerçek raporlar çıkana kadar korunacaktı; siteler 0-20 aralığına
+yığılırsa k ya da toplama yöntemi yeniden değerlendirilecekti.
+
+**Gözlem (öğrencinin gerçek raporları, 2026-10-06, `skor-v2`):** Deterministik skorlar samsun.edu.tr 74.5,
+tr.wikipedia.org 41.3, saglik.org.tr 11.5, ankara.bel.tr 8.3, acibadem.com.tr 3.6, hepsiburada.com 2.7. LLM skorları
+61.9-93.6. Dört site 2-12 aralığına yığıldı. Raporlar repoya kopyalanmadı; teslim edilecek `reports/` dosyaları
+skor-v3 ile yeniden alınacak. MHRS raporu dışa aktarılmadı.
+
+**Neden:** skor-v2 toplamı `100·e^(−Σ 6·ağırlık_c·D_c/25)`, kategori skorlarının üsleri toplamı 6 olan çarpımıdır.
+Ayrıca cezanın büyük kısmı (saglik %62, hepsiburada %81) kuralların kendisinden değil, aynı kuralın öğe sayısından
+(log₂ n) geliyordu.
+
+**Karşılaştırılan seçenekler** (altı gerçek rapor ve test sayfaları; değerler aynı bulgulara uygulanan formüllerden):
+
+| Seçenek | samsun | wikipedia | ankara | saglik | hepsiburada | acibadem | Tek Kritik | Sonuç |
+|---|---|---|---|---|---|---|---|---|
+| skor-v2, k = 25 | 74.5 | 41.3 | 8.3 | 11.5 | 2.7 | 3.6 | 82.5 | Yığılma |
+| a) k = 50 | 86.3 | 64.3 | 28.9 | 33.9 | 16.3 | 18.9 | 90.8 | Yalnızca ölçek; sıralama aynı |
+| a) k = 100 | 92.9 | 80.2 | 53.7 | 58.2 | 40.4 | 43.5 | 95.3 | Yalnızca ölçek; tek Kritik zayıf |
+| Geometrik ortalama (≡ k = 150) | 95.2 | 86.3 | 66.1 | 69.7 | 54.6 | 57.4 | 96.9 | Tek Kritik −3: çok zayıf |
+| b) Benzersiz kural + küçük log | 83.6 | 72.7 | 55.4 | 53.2 | 44.3 | 40.0 | 90.5 | Kategori ağırlığını yok sayar |
+| c) Şiddet bantları | 69.6 | 52.2 | 36.4 | 34.5 | 27.0 | 23.6 | 70.0 | Tek Kritik sert; ortak tavan |
+| d) ½ en kötü + ½ ortalama | 84.5 | 76.5 | 58.7 | 56.4 | 41.0 | 40.5 | 91.1 | Test sayfalarında sıralamayı bozar |
+| H) 100/(1+D/35) | 82.6 | 61.3 | 36.0 | 39.3 | 27.9 | 29.6 | 87.9 | Yalnızca eğri; sıralama aynı |
+| **G) ½ geometrik + ½ kural (seçildi)** | **84.6** | **73.5** | **57.9** | **55.2** | **49.8** | **46.2** | **89.4** | |
+| G, 0,6/0,4 | 86.8 | 76.0 | 59.5 | 58.1 | 50.8 | 48.4 | 90.9 | +1-3 puan, sıralama aynı |
+
+**Karar:** Öğrenci deterministik skorun sertliğinin düzeltilmesini istedi; Claude yukarıdaki tabloya dayanarak G'yi ½/½ oranıyla önerdi ve uyguladı (`FORMULA_VERSION = skor-v3`). LLM için öğrencinin onayladığı A2 (3'ten az
+yanıtlı ilke "yetersiz kapsam", ortalamaya girmez) ve bilgi amaçlı katı skor (belirsize düşen "hayır"lar "hayır"
+sayılır, resmi skora girmez). "Katmanlar çelişiyor" uyarısı eklenmedi. Kanıtsız "evet" asimetrisi yalnızca README
+"Bilinen sınırlamalar"a yazıldı; prompt ve doğrulayıcı değişmedi. PROMPT_VERSION değişmedi.
+
+**G'nin bilinen ödünleşimi:** Tek kuralda çok öğe (şablon hatası) hafif sayılır: tek Kritik kural 1 öğede 89.4,
+1000 öğede 76.1; beş farklı Yüksek kural 69.3. README "Bilinen sınırlamalar"da yazılı.
+
+**Değişiklikten sonra yeniden alınacaklar** (skor-v3 ile):
+1. Üç site raporu (`reports/saglik-*`, `eticaret-*`, `kamu-*`).
+2. Tutarlılık testi JSON'u (N ≥ 3) ve README tutarlılık tablosu (A2 ilke skorlarını değiştirir).
+3. Halüsinasyon elle doğrulama listesi, son raporla aynı çalıştırmadan (runId).
+4. Manuel karşılaştırma, Büyükanne ve Gece 3 belgelerindeki skor alıntıları (deterministik bulgular değişmez).
+5. README doğrulama sayıları.
 
 ## Doğrulama notu (araç tarafı)
 
