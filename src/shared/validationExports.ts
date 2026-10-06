@@ -1,6 +1,7 @@
 // Doğrulama dışa aktarımlarının şeması ve kurucuları (Ödev Bölüm 4).
 // Bu dosyalar YALNIZCA gerçek çalıştırmaların verisini içerir; yorum/sonuç alanları öğrenci tarafından doldurulur.
 import { scoreLlm } from '@/scoring/score'
+import { FORMULA_VERSION } from '@/scoring/weights'
 import { DEVIATION_THRESHOLD, answerAgreement, seriesStats, type AnswerAgreement, type SeriesStats } from '@/scoring/stats'
 import type { PageInfo } from './contentApi'
 import { PAGE_EVIDENCE_ID, type Inventory } from './inventory'
@@ -25,6 +26,10 @@ export interface ConsistencyRunEntry {
   usage: LlmResult['run']['usage']
   principleScores: Record<NormanPrincipleId, number | null>
   llmScore: number | null
+  /** Bilgi amaçlı katı skor (belirsize düşen "hayır"lar "hayır" sayılır); resmi skor değildir. */
+  llmStrictScore: number | null
+  /** Evet/hayır ile yanıtlanan soru sayısı (kapsam). */
+  answeredQuestions: number
   hallucination: HallucinationStats
   missingQuestionIds: string[]
   rawResponse: string
@@ -46,6 +51,8 @@ export interface ConsistencyExport {
   provider: LlmRequest['provider']
   requestedModel: string
   promptVersion: string
+  /** İlke skorlarını üreten formülün sürümü (src/scoring/weights.ts). */
+  formulaVersion: string
   /** Tutarlılığı etkileyen parametreler (temperature, effort/thinkingLevel, maxTokens). */
   parameters: LlmRequestParameters
   /** Çalıştırmalar arası bekleme ve 429/503 yeniden deneme kuralı (src/shared/retry.ts). */
@@ -91,6 +98,8 @@ export function toRunEntry(result: LlmResult, runIndex: number): ConsistencyRunE
     usage: result.run.usage,
     principleScores,
     llmScore: layer.score,
+    llmStrictScore: layer.strictScore ?? null,
+    answeredQuestions: layer.coverage?.answered ?? 0,
     hallucination: result.hallucination,
     missingQuestionIds: result.missingQuestionIds,
     rawResponse: result.run.rawResponse,
@@ -120,6 +129,7 @@ export function buildConsistencyExport(input: {
     provider: input.request.provider,
     requestedModel: input.request.model,
     promptVersion: PROMPT_VERSION,
+    formulaVersion: FORMULA_VERSION,
     parameters: requestParameters(input.request),
     pacing: { runIntervalMs: RUN_INTERVAL_MS[input.request.provider], maxRetries: MAX_RETRIES },
     requestedRuns: input.requestedRuns,

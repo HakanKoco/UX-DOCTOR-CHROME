@@ -3,7 +3,7 @@
 import type { LoadState } from './loadState'
 import type { ThirdPartyTag } from './thirdParty'
 
-export const REPORT_SCHEMA_VERSION = '1.4.0'
+export const REPORT_SCHEMA_VERSION = '1.5.0'
 
 export type Severity = 'Kritik' | 'Yüksek' | 'Orta' | 'Düşük'
 export const SEVERITIES: readonly Severity[] = ['Kritik', 'Yüksek', 'Orta', 'Düşük']
@@ -86,8 +86,30 @@ export interface LayerScore {
   /** 0-100; hiçbir alt skor hesaplanamadıysa null. */
   score: number | null
   categories: CategoryScore[]
-  /** Yalnızca deterministik katmanda: toplam ağırlıklı ceza D (S = 100 · e^(−D/k)). */
+  /** Yalnızca deterministik katmanda: Σ ağırlık_c · D_c (kategori yarısı = 100 · e^(−bu/25)). */
   penalty?: number
+  /** Yalnızca deterministik katmanda (skor-v3): skorun iki yarısı. Skor = ½ · categoryScore + ½ · ruleScore. */
+  components?: {
+    /** Kategori skorlarının ağırlıklı geometrik ortalaması. */
+    categoryScore: number
+    /** 100 · e^(−ruleWeightSum / 20); öğe sayısı girmez. */
+    ruleScore: number
+    /** İhlal edilen benzersiz kuralların şiddet ağırlıkları toplamı (R). */
+    ruleWeightSum: number
+    violatedRules: number
+  }
+  /**
+   * Yalnızca LLM katmanında, bilgi amaçlı: belirsize düşen (kanıtsız ya da halüsinasyonlu) "hayır"lar "hayır"
+   * sayılsaydı LLM skoru ne olurdu. Resmi skor ve toplam bunu KULLANMAZ.
+   */
+  strictScore?: number | null
+  /** Yalnızca LLM katmanında: evet/hayır ile yanıtlanan soru oranı ve yetersiz kapsamlı ilkeler (ortalamaya girmez). */
+  coverage?: {
+    answered: number
+    questions: number
+    minAnsweredPerPrinciple: number
+    insufficientPrinciples: string[]
+  }
 }
 
 export interface PrivacyRecord {
