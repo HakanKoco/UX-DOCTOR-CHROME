@@ -917,6 +917,6 @@ kontroller "kaldı" görünür; bu beklenen durumdur.
 | GitHub repo (anlamlı commit geçmişi) | https://github.com/HakanKoco/UX-DOCTOR-CHROME (push: öğrenci) |
 | README: kurulum, skor formülü, mimari şema, bilinen sınırlamalar | Bu dosya |
 | README: doğrulama sonuçları | TODO: gerçek ölçüm (öğrenci) |
-| 3 sitenin JSON raporu (`reports/`) | TODO: gerçek ölçüm (öğrenci) |
+| 3 sitenin JSON raporu (`reports/`) | `reports/saglik-acibadem.json`, `reports/eticaret-hepsiburada.json`, `reports/kamu-ankara-bel.json` (+ tutarlılık ve halüsinasyon dosyaları) |
 | 3-5 dakikalık demo videosu | https://www.youtube.com/watch?v=l7x-UNHbHXI |
 | Yansıtma notu (yarım sayfa) | TODO (öğrenci) |
