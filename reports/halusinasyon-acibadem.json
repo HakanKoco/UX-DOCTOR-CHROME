@@ -1,0 +1,182 @@
+{
+  "kind": "hallucination-review",
+  "schemaVersion": "1.5.0",
+  "generatedAt": "2026-10-07T11:32:29.064Z",
+  "page": {
+    "url": "https://www.acibadem.com.tr/",
+    "title": "Acıbadem Sağlık Grubu"
+  },
+  "runId": "c1f00902-b69d-4745-9974-a413239eae53",
+  "provider": "gemini",
+  "model": {
+    "requested": "gemini-3.5-flash-lite",
+    "served": "gemini-3.5-flash-lite"
+  },
+  "promptVersion": "norman-rubrik-v1",
+  "instructions": "Her bulgu için sayfayı açıp öğeyi bulun (yan paneldeki \"Sayfada göster\" düğmesi ya da seçici). Bulgu sayfada gerçekten varsa ve gerekçe doğruysa gercekMi=true, öğe yoksa ya da iddia yanlışsa gercekMi=false yazın. Oran = false sayısı / toplam bulgu.",
+  "autoCheck": {
+    "totalReferences": 28,
+    "invalidReferences": 0,
+    "droppedFindings": 0,
+    "evidencelessNegatives": 2,
+    "invalidReferenceRate": 0,
+    "invalidIds": [],
+    "selectorCheck": {
+      "checked": 5,
+      "found": 5,
+      "missing": []
+    }
+  },
+  "droppedReferences": [],
+  "items": [
+    {
+      "findingId": "L-V4",
+      "questionId": "V4",
+      "principle": "Norman: Görünürlük",
+      "question": "Görünür etkileşimli öğelerin hepsinin görünür bir metni ya da erişilebilir adı var mı (adsız, yalnızca ikonlu öğe yok mu)?",
+      "severity": "Yüksek",
+      "elementId": "E80",
+      "selector": "div:nth-of-type(8) > div > div > button",
+      "element": {
+        "tag": "button",
+        "role": "button",
+        "name": "",
+        "nameSource": "none"
+      },
+      "relatedElements": [],
+      "rationale": "E80 · düğme (<button>) — Görünür etkileşimli öğelerin hepsinin görünür bir metni ya da erişilebilir adı var mı (adsız, yalnızca ikonlu öğe yok mu)? → Hayır. E80 ID'li etkileşimli düğme öğesinin adı yoktur (nameSource=none).",
+      "fix": "Adsız etkileşimli öğelere (E80) aria-label gibi erişilebilir bir ad eklenmelidir.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": true,
+      "not": "DevTools: düğmenin metni boş, aria-label ve label yok. axe de sayfada button-name ihlalleri buldu."
+    },
+    {
+      "findingId": "L-F2",
+      "questionId": "F2",
+      "principle": "Norman: Geri Bildirim",
+      "question": "Formlardaki zorunlu alanlar programatik olarak işaretlenmiş mi (required ya da aria-required)?",
+      "severity": "Orta",
+      "elementId": "E70",
+      "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > div > div > div > div > form > div > input",
+      "element": {
+        "tag": "input",
+        "role": "textbox",
+        "name": "Acıbadem'de arayın",
+        "nameSource": "placeholder"
+      },
+      "relatedElements": [],
+      "rationale": "E70 · metin alanı \"Acıbadem'de arayın\" (<input>) — Formlardaki zorunlu alanlar programatik olarak işaretlenmiş mi (required ya da aria-required)? → Hayır. Form alanında zorunlu alan durumu programatik olarak işaretlenmemiştir.",
+      "fix": "Zorunlu form alanlarına required veya aria-required öznitelikleri eklenmelidir.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": false,
+      "not": "Yanlış alarm: required gerçekten yok, ama arama kutusunun zorunlu olması gerekmiyor; soru bu alana uymuyor."
+    },
+    {
+      "findingId": "L-C2",
+      "questionId": "C2",
+      "principle": "Norman: Kısıtlar",
+      "question": "Giriş alanları beklenen veri türüne uygun type ile sınırlandırılmış mı (email, tel, number, date, search vb.)?",
+      "severity": "Orta",
+      "elementId": "E70",
+      "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > div > div > div > div > form > div > input",
+      "element": {
+        "tag": "input",
+        "role": "textbox",
+        "name": "Acıbadem'de arayın",
+        "nameSource": "placeholder"
+      },
+      "relatedElements": [],
+      "rationale": "E70 · metin alanı \"Acıbadem'de arayın\" (<input>) — Giriş alanları beklenen veri türüne uygun type ile sınırlandırılmış mı (email, tel, number, date, search vb.)? → Hayır. Arama işlevi gören giriş alanı inputType='text' olarak tanımlanmıştır.",
+      "fix": "Arama girdisi için inputType='search' kullanılmalıdır.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": true,
+      "not": "DevTools: type attribute yok (varsayılan text); type=\"search\" kullanılmamış."
+    },
+    {
+      "findingId": "L-M1",
+      "questionId": "M1",
+      "principle": "Norman: Eşleme",
+      "question": "Form alanlarının etiketleri alanla programatik olarak eşleşmiş mi (label, aria-labelledby; yalnızca placeholder değil)?",
+      "severity": "Yüksek",
+      "elementId": "E70",
+      "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > div > div > div > div > form > div > input",
+      "element": {
+        "tag": "input",
+        "role": "textbox",
+        "name": "Acıbadem'de arayın",
+        "nameSource": "placeholder"
+      },
+      "relatedElements": [],
+      "rationale": "E70 · metin alanı \"Acıbadem'de arayın\" (<input>) — Form alanlarının etiketleri alanla programatik olarak eşleşmiş mi (label, aria-labelledby; yalnızca placeholder değil)? → Hayır. E70 form alanı yalnızca placeholder (nameSource=placeholder) kullanmakta olup programatik bir etikete sahip değildir.",
+      "fix": "Form alanları için placeholder yerine label veya aria-labelledby kullanılmalıdır.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": true,
+      "not": "DevTools: label sayısı 0, aria-label yok, yalnızca placeholder. axe placeholder'ı ad saydığı için ihlal vermedi."
+    },
+    {
+      "findingId": "L-M4",
+      "questionId": "M4",
+      "principle": "Norman: Eşleme",
+      "question": "Başlık hiyerarşisi içerik yapısını yansıtıyor mu (tek h1, düzey atlamadan sıralı başlıklar)?",
+      "severity": "Orta",
+      "elementId": "E4",
+      "selector": "div:nth-of-type(7) > div > h1",
+      "element": {
+        "tag": "h1",
+        "role": "heading",
+        "name": "Daha sağlıklı bir yarın için...",
+        "nameSource": "text"
+      },
+      "relatedElements": [
+        {
+          "elementId": "E42",
+          "selector": "div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > h1"
+        }
+      ],
+      "rationale": "E4 · başlık \"Daha sağlıklı bir yarın için...\" (<h1>) — Başlık hiyerarşisi içerik yapısını yansıtıyor mu (tek h1, düzey atlamadan sıralı başlıklar)? → Hayır. Sayfada birden fazla h1 başlığı (E4, E42, E43 vb.) bulunarak hiyerarşi kuralı ihlal edilmiştir.",
+      "fix": "Sayfada yalnızca bir adet h1 ana başlığı olmalı, diğer ana başlıklar h2 veya alt düzeyler olmalıdır.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": true,
+      "not": "DevTools: sayfada 6 h1 var."
+    },
+    {
+      "findingId": "L-A5",
+      "questionId": "A5",
+      "principle": "Norman: Sağlarlık",
+      "question": "Tıklanamayan öğeler tıklanabilir gibi görünmüyor mu (cursor: pointer olan ama etkileşimli olmayan öğe yok mu)?",
+      "severity": "Düşük",
+      "elementId": "E48",
+      "selector": "a:nth-of-type(1) > div > div > div > h6",
+      "element": {
+        "tag": "h6",
+        "role": "heading",
+        "name": "Eğitim",
+        "nameSource": "text"
+      },
+      "relatedElements": [],
+      "rationale": "E48 · başlık \"Eğitim\" (<h6>) — Tıklanamayan öğeler tıklanabilir gibi görünmüyor mu (cursor: pointer olan ama etkileşimli olmayan öğe yok mu)? → Hayır. E48 gibi etkileşimli olmayan başlık öğelerinde yanlışlıkla cursor: pointer kullanılmıştır.",
+      "fix": "Etkileşimli olmayan başlıklarda imleç pointer yerine varsayılan (default/auto) olmalıdır.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": false,
+      "not": "İddia yanlış: \"Eğitim\" h6 başlığı bir bağlantının (a) içinde, yani tıklanabilir; cursor: pointer doğru."
+    }
+  ]
+}

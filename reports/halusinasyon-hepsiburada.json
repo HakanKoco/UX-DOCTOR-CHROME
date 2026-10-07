@@ -1,0 +1,119 @@
+{
+  "kind": "hallucination-review",
+  "schemaVersion": "1.5.0",
+  "generatedAt": "2026-10-07T11:29:50.961Z",
+  "page": {
+    "url": "https://www.hepsiburada.com/",
+    "title": "Türkiye'nin En Çok Tavsiye Edilen E-ticaret Markası Hepsiburada"
+  },
+  "runId": "b7f17b23-37c5-41d6-8709-40bda5a3d341",
+  "provider": "gemini",
+  "model": {
+    "requested": "gemini-3.5-flash-lite",
+    "served": "gemini-3.5-flash-lite"
+  },
+  "promptVersion": "norman-rubrik-v1",
+  "instructions": "Her bulgu için sayfayı açıp öğeyi bulun (yan paneldeki \"Sayfada göster\" düğmesi ya da seçici). Bulgu sayfada gerçekten varsa ve gerekçe doğruysa gercekMi=true, öğe yoksa ya da iddia yanlışsa gercekMi=false yazın. Oran = false sayısı / toplam bulgu.",
+  "autoCheck": {
+    "totalReferences": 10,
+    "invalidReferences": 0,
+    "droppedFindings": 0,
+    "evidencelessNegatives": 0,
+    "invalidReferenceRate": 0,
+    "invalidIds": [],
+    "selectorCheck": {
+      "checked": 3,
+      "found": 3,
+      "missing": []
+    }
+  },
+  "droppedReferences": [],
+  "items": [
+    {
+      "findingId": "L-V1",
+      "questionId": "V1",
+      "principle": "Norman: Görünürlük",
+      "question": "Sayfanın amacı ilk ekranda görünür bir ana başlıkla (h1 ya da eşdeğeri) belirtilmiş mi?",
+      "severity": "Yüksek",
+      "elementId": "SAYFA",
+      "selector": "body",
+      "element": null,
+      "relatedElements": [],
+      "rationale": "Sayfa geneli — Sayfanın amacı ilk ekranda görünür bir ana başlıkla (h1 ya da eşdeğeri) belirtilmiş mi? → Hayır. Envanterdeki ilk ekranda h1 düzeyinde bir ana başlık bulunmamaktadır.",
+      "fix": "Sayfanın amacını belirten ve h1 etiketine sahip bir ana başlık ilk ekrana eklenmelidir.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": true,
+      "not": "DevTools: sayfada h1 sayısı 0."
+    },
+    {
+      "findingId": "L-V2",
+      "questionId": "V2",
+      "principle": "Norman: Görünürlük",
+      "question": "Ana gezinme (navigation landmark ya da menü bağlantıları) ilk ekranda görünür ve öğelerin adları anlaşılır mı?",
+      "severity": "Orta",
+      "elementId": "SAYFA",
+      "selector": "body",
+      "element": null,
+      "relatedElements": [],
+      "rationale": "Sayfa geneli — Ana gezinme (navigation landmark ya da menü bağlantıları) ilk ekranda görünür ve öğelerin adları anlaşılır mı? → Hayır. Envanterde role=navigation veya ana gezinme öğesi yer almamaktadır.",
+      "fix": "Sayfanın üst kısmına erişilebilir bir ana gezinme (navigation landmark) eklenmelidir.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": true,
+      "not": "DevTools: nav / role=navigation sayısı 0; görsel kategori menüsü landmark olarak işaretlenmemiş."
+    },
+    {
+      "findingId": "L-M4",
+      "questionId": "M4",
+      "principle": "Norman: Eşleme",
+      "question": "Başlık hiyerarşisi içerik yapısını yansıtıyor mu (tek h1, düzey atlamadan sıralı başlıklar)?",
+      "severity": "Orta",
+      "elementId": "SAYFA",
+      "selector": "body",
+      "element": null,
+      "relatedElements": [],
+      "rationale": "Sayfa geneli — Başlık hiyerarşisi içerik yapısını yansıtıyor mu (tek h1, düzey atlamadan sıralı başlıklar)? → Hayır. Sayfada h1 düzeyinde başlık bulunmamakta ve başlık hiyerarşisi eksiktir.",
+      "fix": "Başlık hiyerarşisi h1 ile başlatılmalı ve düzenli bir sırada sürdürülmelidir.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": true,
+      "not": "DevTools: h1 sayısı 0, hiyerarşi h1 olmadan başlıyor."
+    },
+    {
+      "findingId": "L-K4",
+      "questionId": "K4",
+      "principle": "Norman: Tutarlılık",
+      "question": "Sayfa yaygın yerleşim düzenine uyuyor mu (banner/header, navigation, main, contentinfo/footer landmarkları)?",
+      "severity": "Düşük",
+      "elementId": "E3",
+      "selector": "main",
+      "element": {
+        "tag": "main",
+        "role": "main",
+        "name": "",
+        "nameSource": "none"
+      },
+      "relatedElements": [
+        {
+          "elementId": "E5",
+          "selector": "footer"
+        }
+      ],
+      "rationale": "E3 · ana içerik bölgesi (<main>) — Sayfa yaygın yerleşim düzenine uyuyor mu (banner/header, navigation, main, contentinfo/footer landmarkları)? → Hayır. Sayfada yaygın yerleşim düzeninde yer alması gereken banner/header ve navigation landmark'ları eksiktir.",
+      "fix": "Sayfa yapısına standart header ve navigation landmark'ları eklenmelidir.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": true,
+      "not": "DevTools: header/banner 0, nav 0; main 1, footer 1."
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+{
+  "kind": "hallucination-review",
+  "schemaVersion": "1.5.0",
+  "generatedAt": "2026-10-07T11:30:59.799Z",
+  "page": {
+    "url": "https://www.ankara.bel.tr/",
+    "title": "T.C. Ankara Büyükşehir Belediyesi"
+  },
+  "runId": "f1bb3582-7cea-4f1c-81fc-357fce6e0dc3",
+  "provider": "gemini",
+  "model": {
+    "requested": "gemini-3.5-flash-lite",
+    "served": "gemini-3.5-flash-lite"
+  },
+  "promptVersion": "norman-rubrik-v1",
+  "instructions": "Her bulgu için sayfayı açıp öğeyi bulun (yan paneldeki \"Sayfada göster\" düğmesi ya da seçici). Bulgu sayfada gerçekten varsa ve gerekçe doğruysa gercekMi=true, öğe yoksa ya da iddia yanlışsa gercekMi=false yazın. Oran = false sayısı / toplam bulgu.",
+  "autoCheck": {
+    "totalReferences": 50,
+    "invalidReferences": 0,
+    "droppedFindings": 0,
+    "evidencelessNegatives": 2,
+    "invalidReferenceRate": 0,
+    "invalidIds": [],
+    "selectorCheck": {
+      "checked": 9,
+      "found": 9,
+      "missing": []
+    }
+  },
+  "droppedReferences": [],
+  "items": [
+    {
+      "findingId": "L-V4",
+      "questionId": "V4",
+      "principle": "Norman: Görünürlük",
+      "question": "Görünür etkileşimli öğelerin hepsinin görünür bir metni ya da erişilebilir adı var mı (adsız, yalnızca ikonlu öğe yok mu)?",
+      "severity": "Yüksek",
+      "elementId": "E34",
+      "selector": "nav > div > div:nth-of-type(3) > a",
+      "element": {
+        "tag": "a",
+        "role": "button",
+        "name": "",
+        "nameSource": "none"
+      },
+      "relatedElements": [
+        {
+          "elementId": "E36",
+          "selector": "#abb-navbar > div:nth-of-type(2) > a"
+        }
+      ],
+      "rationale": "E34 · düğme (<a>) — Görünür etkileşimli öğelerin hepsinin görünür bir metni ya da erişilebilir adı var mı (adsız, yalnızca ikonlu öğe yok mu)? → Hayır. Bazı etkileşimli bağlantı/düğme öğelerinde metin veya erişilebilir ad bulunmamaktadır.",
+      "fix": "Adsız etkileşimli öğelere anlamlı birer aria-label veya metin ekleyin.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": true,
+      "not": "DevTools: iki bağlantının metni boş, aria-label/title yok, içinde img alt yok."
+    },
+    {
+      "findingId": "L-M1",
+      "questionId": "M1",
+      "principle": "Norman: Eşleme",
+      "question": "Form alanlarının etiketleri alanla programatik olarak eşleşmiş mi (label, aria-labelledby; yalnızca placeholder değil)?",
+      "severity": "Yüksek",
+      "elementId": "E35",
+      "selector": "input[name=\"term\"]",
+      "element": {
+        "tag": "input",
+        "role": "textbox",
+        "name": "Nasıl yardımcı olabiliriz?",
+        "nameSource": "placeholder"
+      },
+      "relatedElements": [],
+      "rationale": "E35 · metin alanı \"Nasıl yardımcı olabiliriz?\" (<input>) — Form alanlarının etiketleri alanla programatik olarak eşleşmiş mi (label, aria-labelledby; yalnızca placeholder değil)? → Hayır. Form alanının adı yalnızca placeholder niteliğinden alınmıştır, programatik etiket eksiktir.",
+      "fix": "Giriş alanına bağımsız bir <label> etiketi veya aria-label ekleyin.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": true,
+      "not": "DevTools: label sayısı 0, aria-label yok, yalnızca placeholder."
+    },
+    {
+      "findingId": "L-M4",
+      "questionId": "M4",
+      "principle": "Norman: Eşleme",
+      "question": "Başlık hiyerarşisi içerik yapısını yansıtıyor mu (tek h1, düzey atlamadan sıralı başlıklar)?",
+      "severity": "Orta",
+      "elementId": "E6",
+      "selector": "section:nth-of-type(4) > div > div > h3",
+      "element": {
+        "tag": "h3",
+        "role": "heading",
+        "name": "Haberler",
+        "nameSource": "text"
+      },
+      "relatedElements": [
+        {
+          "elementId": "E12",
+          "selector": "section:nth-of-type(8) > div > div:nth-of-type(1) > div:nth-of-type(2) > h3"
+        }
+      ],
+      "rationale": "E6 · başlık \"Haberler\" (<h3>) — Başlık hiyerarşisi içerik yapısını yansıtıyor mu (tek h1, düzey atlamadan sıralı başlıklar)? → Hayır. Sayfada h1 düzeyinde başlık bulunmamakta ve h3 başlıklar doğrudan kullanılmaktadır.",
+      "fix": "Sayfa hiyerarşisini düzeltip h1 başlığı ile başlayın ve düzey atlamayın.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": false,
+      "not": "İddia yanlış: sayfada 10 h1 var. LLM'e giden envanterde yalnızca h3 başlıklar vardı (envanter 221 öğeden 200'e kesildi; h1'ler görünmez ya da kesilmiş olabilir). Envanter sınırlaması."
+    },
+    {
+      "findingId": "L-K3",
+      "questionId": "K3",
+      "principle": "Norman: Tutarlılık",
+      "question": "Metin içi bağlantılar tutarlı biçimde ayırt ediliyor mu (alt çizgi ya da çevresinden farklı renk)?",
+      "severity": "Orta",
+      "elementId": "E37",
+      "selector": "#abb-navbar > ul > li:nth-of-type(1) > a",
+      "element": {
+        "tag": "a",
+        "role": "link",
+        "name": "Başkan",
+        "nameSource": "text"
+      },
+      "relatedElements": [
+        {
+          "elementId": "E38",
+          "selector": "#abb-navbar > ul > li:nth-of-type(2) > a"
+        }
+      ],
+      "rationale": "E37 · bağlantı \"Başkan\" (<a>) — Metin içi bağlantılar tutarlı biçimde ayırt ediliyor mu (alt çizgi ya da çevresinden farklı renk)? → Hayır. Metin içi bağlantılarda underline veya farklı renk belirtilmemiştir (underline: false).",
+      "fix": "Metin içi bağlantıların ayırt edilebilmesi için alt çizgi veya farklı renk tanımlayın.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": false,
+      "not": "Yanlış öğe: \"Başkan\" metin içi bağlantı değil, üst menü bağlantısı; soru bu öğeye uymuyor."
+    },
+    {
+      "findingId": "L-A1",
+      "questionId": "A1",
+      "principle": "Norman: Sağlarlık",
+      "question": "Tıklanabilir öğeler semantik olarak doğru öğe ya da rolle mi işaretlenmiş (div/span yerine button/a; onclick taşıyan genel öğe yok mu)?",
+      "severity": "Yüksek",
+      "elementId": "E46",
+      "selector": "#hero > div:nth-of-type(1) > div:nth-of-type(3)",
+      "element": {
+        "tag": "div",
+        "role": "button",
+        "name": "Next slide",
+        "nameSource": "aria-label"
+      },
+      "relatedElements": [
+        {
+          "elementId": "E47",
+          "selector": "#hero > div:nth-of-type(1) > div:nth-of-type(4)"
+        }
+      ],
+      "rationale": "E46 · düğme \"Next slide\" (<div>) — Tıklanabilir öğeler semantik olarak doğru öğe ya da rolle mi işaretlenmiş (div/span yerine button/a; onclick taşıyan genel öğe yok mu)? → Hayır. Bazı tıklanabilir öğeler button/a yerine div etiketi ile oluşturulmuştur.",
+      "fix": "Tıklanabilir div öğelerini semantik olarak <button> veya <a> etiketleriyle değiştirin.",
+      "autoCheck": {
+        "idInInventory": true,
+        "selectorFoundOnPage": true
+      },
+      "gercekMi": false,
+      "not": "İddia yanlış: öğe div ama role=\"button\" ve aria-label=\"Next slide\" taşıyor; soru \"doğru öğe ya da rol\" diyor."
+    }
+  ]
+}
