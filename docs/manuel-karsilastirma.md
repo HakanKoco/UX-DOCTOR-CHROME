@@ -15,23 +15,25 @@
 |---|---|
 | Sayfa (URL, yalnızca herkese açık) | https://www.acibadem.com.tr/ (ana sayfa) |
 | Site kategorisi (sağlık / e-ticaret / kamu) | Sağlık |
-| Denetim tarihi ve saati | 2026-10-07 (DevTools doğrulaması, Büyükanne ve Gece 3 testleri); ekran okuyucu görevi: TODO: gerçek ölçüm |
-| Tarayıcı ve sürümü | TODO: gerçek ölçüm |
-| Ekran okuyucu ve sürümü (ör. NVDA, Windows Ekran Okuyucusu) | TODO: gerçek ölçüm |
+| Denetim tarihi ve saati | 2026-10-07 (DevTools doğrulaması, Büyükanne ve Gece 3 testleri, ekran okuyucu görevi) |
+| Tarayıcı ve sürümü | Chrome 154.0.8037.98 (Resmi Derleme, 64 bit, Stable), Windows 11 26H2 (Build 26300.9457) |
+| Ekran okuyucu ve sürümü (ör. NVDA, Windows Ekran Okuyucusu) | Windows Ekran Okuyucusu (Windows 11 26H2 yerleşik) |
 | UX Doktor sürümü / model / prompt sürümü | 1.0.0 / gemini-3.5-flash-lite / norman-rubrik-v1 |
 | Karşılaştırılan rapor dosyası (`reports/…json`) | `reports/saglik-acibadem.json` |
 
 ## 2. Görev (klavye + ekran okuyucu, en az 1 görev)
 
-Görev tanımı: TODO: gerçek ölçüm (ör. "Ana sayfadan kardiyoloji bölümü için randevu sayfasına ulaşmak")
+Görev tanımı: Ana sayfadan "Randevu Al" ile randevu sayfasına geçip klinik, doktor ve tarih seçerek randevu adımlarını tamamlamak. Yalnızca klavye kullanıldı, ekran okuyucu açıktı.
 
 | Adım | Klavye ile yapılan (Tab, Shift+Tab, Enter, ok tuşları…) | Ekran okuyucunun okuduğu | Sorun var mı? Açıklama |
 |---|---|---|---|
-| 1 | TODO: gerçek ölçüm | TODO: gerçek ölçüm | TODO: gerçek ölçüm |
-| 2 | TODO: gerçek ölçüm | TODO: gerçek ölçüm | TODO: gerçek ölçüm |
-| 3 | TODO: gerçek ölçüm | TODO: gerçek ölçüm | TODO: gerçek ölçüm |
+| 1 | Ana sayfada Tab ile "Randevu Al"a gelip Enter | "Randevu Al" net duyuldu | Yok |
+| 2 | Randevu sayfasında detaylı filtreleme alanında Tab/ok tuşlarıyla gezinme | Hızlı geçişlerde okumalar birbirine karıştı; ayrıntı not edilmedi | Var: çok sayıda seçenek, klavyeyle gezinmek karışık |
+| 3 | Klinik ve doktor seçimi | Ayrıntı not edilmedi | Var: seçim "zar zor" yapıldı |
+| 4 | Tarih seçimi | Ayrıntı not edilmedi | Var: tarih seçimi zorlayıcı |
 
-Görev tamamlandı mı? TODO: gerçek ölçüm
+Görev tamamlandı mı? Evet, yaklaşık 8-9 dakikada, yalnızca klavyeyle. Süre ve filtre karmaşıklığı görevin en zor
+kısmıydı.
 
 ## 3. Karşılaştırma tablosu
 
@@ -58,6 +60,7 @@ tabloya ve özete alınmadı.
 | 10 | Otomatik kayan/hareketli içerik dikkat dağıtıyor | elle | Kaçırdı | — | Büyükanne #8 | Hayır | Statik analiz; WCAG 2.2.2 ölçülmüyor |
 | 11 | Acil servis numarası mobil ilk ekranda değil (~40 sn, 3 tıklama) | elle | Kaçırdı | — | Gece 3 #1 | Hayır | Rubrikte yok; analiz masaüstü genişliğinde (1078 px) |
 | 12 | Acil bilgiye giden yolun adı belirgin değil | elle | Kaçırdı | — (LLM M2 "evet" dedi) | Gece 3 #4 | Hayır | Rubrik belirsiz bağlantı metnini arar, acil yolun belirginliğini sormaz |
+| 13 | Randevu sayfasında detaylı filtreleme çok seçenekli; klavye + ekran okuyucuyla klinik, doktor ve tarih seçimi zor ve uzun (~8-9 dk) | elle (ekran okuyucu görevi) | Kapsam dışı | — | Bölüm 2, adım 2-4 | Hayır | Araç randevu sayfasında çalıştırılmadı (rapor ana sayfa); özete katılmadı |
 
 ## 4. Özet
 
@@ -74,4 +77,4 @@ etiket, başlık yapısı) elle gözlemle örtüşecek şekilde yakaladı. Kaç�
 gerektiriyor: dil sadeliği, yakınlaştırmadaki yerleşim, hareketli içerik, mobil ilk ekran ve acil bilginin
 bulunabilirliği. Bunlar rubrikte yok ya da statik, tek pencere genişliğinde yapılan analizle görülemiyor. İki yanlış
 alarmın ikisi de LLM katmanından; ikisinde de öğe doğru, ama soru öğeye uymuyor (F2) ya da öğenin bağlamı (bağlantı
-içinde olması) görülmemiş (A5). Ekran okuyucu görevi: TODO: gerçek ölçüm
+içinde olması) görülmemiş (A5). Ekran okuyucu görevinde ana sayfadaki "Randevu Al" sorunsuz bulundu ve net okundu; asıl zorluk randevu sayfasındaki çok seçenekli filtreleme ve seçim adımlarındaydı (~8-9 dk). Araç bu sayfada çalıştırılmadığı için bu sorun "kapsam dışı" olarak ayrı tutuldu; tek sayfalık statik analiz çok adımlı bir görevin zorluğunu ölçmez.

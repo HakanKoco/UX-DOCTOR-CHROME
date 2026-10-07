@@ -700,7 +700,9 @@ Klavye ve ekran okuyucuyla en az bir görev: [docs/manuel-karsilastirma.md](docs
 Acıbadem ana sayfası. Satırlar DevTools ile elle doğrulanan LLM bulgularından ve Büyükanne/Gece 3 gözlemlerinden
 geliyor. Yakalananlar ölçülebilir sorunlar (adsız düğme, kontrast, etiket, başlık yapısı). Kaçırılanlar bağlam
 gerektiren sorunlar (tıbbi dil, yakınlaştırmada yerleşim, kayan içerik, mobil ilk ekranda acil numara). Klavye +
-ekran okuyucu görevinin bulguları: TODO: gerçek ölçüm
+ekran okuyucu görevi (Windows Ekran Okuyucusu, yalnızca klavye): "Randevu Al" net okundu ve ulaşıldı; randevu
+sayfasındaki çok seçenekli filtreleme ile klinik, doktor ve tarih seçimi zorlayıcıydı, görev ~8-9 dakikada
+tamamlandı. Araç randevu sayfasında çalıştırılmadığı için bu sorun "kapsam dışı" olarak ayrı tutuldu.
 
 ### c) Halüsinasyon kontrolü
 
