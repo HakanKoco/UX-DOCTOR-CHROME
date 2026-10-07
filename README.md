@@ -14,6 +14,8 @@ isteğe bağlı olarak kırpılmış ekran görüntüsüyle gösterilir.
 
 Ödev metni: [docs/ODEV.md](docs/ODEV.md) · Gereksinim izlenebilirliği: [docs/GEREKSINIMLER.md](docs/GEREKSINIMLER.md)
 
+Demo videosu: https://www.youtube.com/watch?v=l7x-UNHbHXI
+
 ---
 
 ## İçindekiler
@@ -894,5 +896,5 @@ kontroller "kaldı" görünür; bu beklenen durumdur.
 | README: kurulum, skor formülü, mimari şema, bilinen sınırlamalar | Bu dosya |
 | README: doğrulama sonuçları | TODO: gerçek ölçüm (öğrenci) |
 | 3 sitenin JSON raporu (`reports/`) | TODO: gerçek ölçüm (öğrenci) |
-| 3-5 dakikalık demo videosu | TODO (öğrenci) — bağlantı: |
+| 3-5 dakikalık demo videosu | https://www.youtube.com/watch?v=l7x-UNHbHXI |
 | Yansıtma notu (yarım sayfa) | TODO (öğrenci) |
