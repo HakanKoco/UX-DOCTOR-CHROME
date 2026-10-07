@@ -65,6 +65,7 @@ Durum değerleri:
 | R51 | Sayfa yüklenmeden analiz engeli, rapora page.loadState | 2 (tekrarlanabilirlik) | ek | src/shared/loadState.ts, src/content/analyzer.ts | Tamamlandı (loadState.test.ts, known-errors.test.ts) |
 | R52 | Üçüncü taraf çerez/onay bileşeni etiketi (skoru etkilemez) | 4.b (altyapı) | ek | src/shared/thirdParty.ts | Tamamlandı (third-party.test.ts) |
 | R53 | İstek boyutu küçültme seçimi; skor ayrım gücü alternatifleri ve LLM skorundaki belirsiz cevap sorunları | 2.b, 2 (Skorlama) | ek | — | Karar bekliyor (öğrenci; skor alternatifleri için rapor JSON'ları gerekli) |
+| R54 | Tutarlılık çözüm deneyi: ayarlardan Gemini temperature 0 seçimi (varsayılan 1.0 değişmez); değer istek gövdesine ve parameters.temperature alanına yazılır | 4.a (sapma > 10 puan: çözüm ve yeniden ölçüm) | ek | src/shared/models.ts, src/shared/llmRequest.ts, src/shared/settings.ts, src/options/App.tsx | Kod tamamlandı (llm.test.ts, settings.test.ts); ölçüm öğrencide |
 
 ## Teslim öncesi denetim (ODEV.md madde madde)
 

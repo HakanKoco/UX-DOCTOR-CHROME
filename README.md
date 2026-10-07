@@ -647,7 +647,7 @@ Yöntem:
 | En büyük sapma (max − min) | 33.3 puan (Eşleme); LLM toplamında 21.0 puan (52.4–73.4) |
 | Sapma 10 puanı aştı mı? | Evet |
 | Aştıysa neden (cevabı değişen sorular: dışa aktarımdaki `questionAgreement`) | 9 sorunun cevabı değişti: F2, F3, C2, C4, M2, M5, K4, A4, A5 (aşağıdaki liste). Neden analizi tablonun altında. |
-| Çözüm ve çözüm sonrası ölçüm (Gemini'de gerekirse ayrı deney: `temperature: 0`) | TODO: gerçek ölçüm |
+| Çözüm ve çözüm sonrası ölçüm (Gemini'de gerekirse ayrı deney: `temperature: 0`) | Seçilen çözüm: aynı sayfada ayrı bir deney olarak temperature 0 (Ayarlar → "Gemini temperature (tutarlılık deneyi)"; varsayılan 1.0 değişmez, değer çalıştırma kaydının `parameters.temperature` alanına yazılır). Google Gemini 3 için 1.0'ı önerir ve 1.0 altında döngü/performans düşüşü uyarısı yapar ([gemini-3](https://ai.google.dev/gemini-api/docs/gemini-3)); API aralığı [0.0, 2.0]. Çözüm sonrası ölçüm: TODO: gerçek ölçüm |
 
 `node scripts/tutarlilik-tablosu.mjs reports/tutarlilik-acibadem.json` çıktısı:
 
