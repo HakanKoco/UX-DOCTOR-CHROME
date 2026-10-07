@@ -619,8 +619,8 @@ Her bulgu (`Finding`) şu alanları içerir:
 ## Doğrulama (Ödev Bölüm 4)
 
 > Bu bölümdeki **tüm değerler öğrencinin gerçek çalıştırmalarından** gelir. Araç verileri üretir (dışa aktarımlar ve
-> `scripts/`), ancak sonuçları ve yorumları öğrenci yazar. Doldurulmamış alanlar `TODO: gerçek ölçüm` olarak
-> bırakılmıştır.
+> `scripts/`), ancak sonuçları ve yorumları öğrenci yazar. Ölçülmemiş alanlar açıkça "yapılmadı" ya da
+> "kontrol edilmedi" olarak yazılmıştır.
 
 ### Test edilen siteler
 
@@ -647,7 +647,7 @@ Yöntem:
 | En büyük sapma (max − min) | 33.3 puan (Eşleme); LLM toplamında 21.0 puan (52.4–73.4) |
 | Sapma 10 puanı aştı mı? | Evet |
 | Aştıysa neden (cevabı değişen sorular: dışa aktarımdaki `questionAgreement`) | 9 sorunun cevabı değişti: F2, F3, C2, C4, M2, M5, K4, A4, A5 (aşağıdaki liste). Neden analizi tablonun altında. |
-| Çözüm ve çözüm sonrası ölçüm (Gemini'de gerekirse ayrı deney: `temperature: 0`) | Seçilen çözüm: aynı sayfada ayrı bir deney olarak temperature 0 (Ayarlar → "Gemini temperature (tutarlılık deneyi)"; varsayılan 1.0 değişmez, değer çalıştırma kaydının `parameters.temperature` alanına yazılır). Google Gemini 3 için 1.0'ı önerir ve 1.0 altında döngü/performans düşüşü uyarısı yapar ([gemini-3](https://ai.google.dev/gemini-api/docs/gemini-3)); API aralığı [0.0, 2.0]. Çözüm sonrası ölçüm: TODO: gerçek ölçüm |
+| Çözüm ve çözüm sonrası ölçüm (Gemini'de gerekirse ayrı deney: `temperature: 0`) | Seçilen çözüm: aynı sayfada ayrı bir deney olarak temperature 0 (Ayarlar → "Gemini temperature (tutarlılık deneyi)"; varsayılan 1.0 değişmez, değer çalıştırma kaydının `parameters.temperature` alanına yazılır). Google Gemini 3 için 1.0'ı önerir ve 1.0 altında döngü/performans düşüşü uyarısı yapar ([gemini-3](https://ai.google.dev/gemini-api/docs/gemini-3)); API aralığı [0.0, 2.0]. Çözüm sonrası ölçüm: **yapılmadı.** Deney altyapısı hazır ve testli, ancak teslimden önce temperature 0 ile 3 çalıştırma yapılamadı; bu nedenle sapmanın bu çözümle azalıp azalmadığı ölçülmüş değildir (bkz. Bilinen sınırlamalar). |
 
 `node scripts/tutarlilik-tablosu.mjs reports/tutarlilik-acibadem.json` çıktısı:
 
@@ -748,6 +748,13 @@ Ayrıntılı tablolar ve "kontrol edilmedi" olarak bırakılan maddeler şablonl
 
 ## Bilinen sınırlamalar
 
+- **LLM tutarlılığı eşiği aşıyor ve çözüm ölçülmedi:** Acıbadem'de 3 çalıştırmada (gemini-3.5-flash-lite,
+  temperature 1.0) LLM toplamı 52.4–73.4 arasında değişti; ilke bazında en büyük aralık 33.3 puan. Neden analizi
+  Doğrulama a) bölümünde. Çözüm olarak temperature 0 deneyi koda eklendi (ayarlardan seçilir) ama teslimden önce
+  ölçülemedi. Bu yüzden LLM skorları tek çalıştırmada ±10 puandan fazla oynayabilir; tek bir LLM skoru kesin değer
+  olarak okunmamalıdır. Deterministik skor bu sapmadan etkilenmez.
+- **Gemini ücretsiz katman erişilebilirliği:** Ölçüm günü `gemini-3.8-flash` 503 (geçici kullanılamama) döndürdü;
+  ölçümler `gemini-3.5-flash-lite` ile yapıldı. Sağlayıcı yoğunluğunda LLM katmanı çalışamayabilir.
 - **Yükleme kontrolü sezgiseldir** (`src/shared/loadState.ts`, birim ve tarayıcı testli): analizden önce
   `document.readyState` ve son biten kaynak isteğinin ne kadar önce bittiği (`performance.getEntriesByType('resource')`)
   okunur. `readyState` "complete" değilse analiz yapılmaz ("Sayfa hâlâ yükleniyor, bitince tekrar analiz edin").
@@ -918,7 +925,7 @@ kontroller "kaldı" görünür; bu beklenen durumdur.
 |---|---|
 | GitHub repo (anlamlı commit geçmişi) | https://github.com/HakanKoco/UX-DOCTOR-CHROME (push: öğrenci) |
 | README: kurulum, skor formülü, mimari şema, bilinen sınırlamalar | Bu dosya |
-| README: doğrulama sonuçları | TODO: gerçek ölçüm (öğrenci) |
+| README: doğrulama sonuçları | "Doğrulama" bölümü: a) tutarlılık, b) manuel karşılaştırma, c) halüsinasyon, d) Büyükanne/Gece 3. temperature 0 çözüm deneyi ölçülmedi. |
 | 3 sitenin JSON raporu (`reports/`) | `reports/saglik-acibadem.json`, `reports/eticaret-hepsiburada.json`, `reports/kamu-ankara-bel.json` (+ tutarlılık ve halüsinasyon dosyaları) |
 | 3-5 dakikalık demo videosu | https://www.youtube.com/watch?v=l7x-UNHbHXI |
 | Yansıtma notu (yarım sayfa) | TODO (öğrenci) |
