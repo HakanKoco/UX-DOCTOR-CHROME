@@ -928,4 +928,4 @@ kontroller "kaldı" görünür; bu beklenen durumdur.
 | README: doğrulama sonuçları | "Doğrulama" bölümü: a) tutarlılık, b) manuel karşılaştırma, c) halüsinasyon, d) Büyükanne/Gece 3. temperature 0 çözüm deneyi ölçülmedi. |
 | 3 sitenin JSON raporu (`reports/`) | `reports/saglik-acibadem.json`, `reports/eticaret-hepsiburada.json`, `reports/kamu-ankara-bel.json` (+ tutarlılık ve halüsinasyon dosyaları) |
 | 3-5 dakikalık demo videosu | https://www.youtube.com/watch?v=l7x-UNHbHXI |
-| Yansıtma notu (yarım sayfa) | TODO (öğrenci) |
+| Yansıtma notu (yarım sayfa) | [docs/yansitma-notu.md](docs/yansitma-notu.md) |
