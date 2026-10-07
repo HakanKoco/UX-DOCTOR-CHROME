@@ -646,7 +646,7 @@ Yöntem:
 | İlke başına ortalama, std, min-max | Aşağıdaki tablo |
 | En büyük sapma (max − min) | 33.3 puan (Eşleme); LLM toplamında 21.0 puan (52.4–73.4) |
 | Sapma 10 puanı aştı mı? | Evet |
-| Aştıysa neden (cevabı değişen sorular: dışa aktarımdaki `questionAgreement`) | 9 sorunun cevabı değişti: F2, F3, C2, C4, M2, M5, K4, A4, A5 (aşağıdaki liste). Yorum: TODO: gerçek ölçüm |
+| Aştıysa neden (cevabı değişen sorular: dışa aktarımdaki `questionAgreement`) | 9 sorunun cevabı değişti: F2, F3, C2, C4, M2, M5, K4, A4, A5 (aşağıdaki liste). Neden analizi tablonun altında. |
 | Çözüm ve çözüm sonrası ölçüm (Gemini'de gerekirse ayrı deney: `temperature: 0`) | TODO: gerçek ölçüm |
 
 `node scripts/tutarlilik-tablosu.mjs reports/tutarlilik-acibadem.json` çıktısı:
@@ -674,13 +674,33 @@ Yöntem:
 - A4: evet / evet / hayır (uyum %67)
 - A5: belirsiz / evet / evet (uyum %67)
 
+**Sapmanın nedeni** (yalnızca `reports/tutarlilik-acibadem.json` verisinden):
+- **Girdi aynı, fark örneklemeden geliyor.** Üç çalıştırmada istek gövdesi birebir aynı
+  (`sameRequestBodyForAllRuns: true`), yeniden deneme yok ve yanıtlayan model hep `gemini-3.5-flash-lite`.
+  Değişkenlik envanterden ya da yedek modelden değil, temperature 1.0 ile yapılan örneklemeden kaynaklanıyor.
+- **29 sorunun 20'si üç çalıştırmada da aynı.** Değişen 9 sorunun 7'si sonraki çalıştırmalarda "hayır"a kaydı (F2,
+  F3, C2, C4, M2, M5, K4, A4). Yanıtlanan soru sayısı 23 → 25 → 27'ye çıktı. Yani "belirsiz" denen sınırda sorular
+  sonraki çalıştırmalarda kesin cevaba dönüştü.
+- **Sınırda soruların çoğu envanterde kanıtı zayıf sorular.** F2, F3, C4 ve M5 "belirsiz" ile "hayır" arasında
+  gidip geliyor. Bunlar zorunlu alan, hata mekanizması, biçim beklentisi ve aria-expanded gibi, envanterde ipucu az
+  olan konular. Envanter 352 adaydan 200'e kesilmişti.
+- **Az sorulu ilkelerde tek cevap büyük fark yaratıyor.** Eşleme ilkesinde M2 ve M5'in değişmesi skoru 44.4'ten
+  11.1'e düşürdü (33.3 puan, en büyük aralık). Görünürlük ilkesinde hiçbir cevap değişmedi, aralık 0.
+- **Kapsam eşiği toplamı ayrıca oynatıyor.** Kısıtlar ilkesi #1 ve #2'de 3'ten az soru yanıtlandığı için
+  ortalamaya girmedi. #3'te 33.3 ile girdi ve LLM toplamını aşağı çekti.
+
 ### b) Manuel karşılaştırma
 
 Klavye ve ekran okuyucuyla en az bir görev: [docs/manuel-karsilastirma.md](docs/manuel-karsilastirma.md).
 
-| Yakalanan | Kaçırılan | Yanlış alarm |
-|---|---|---|
-| TODO: gerçek ölçüm | TODO: gerçek ölçüm | TODO: gerçek ölçüm |
+| Yakalanan | Kaçırılan | Yanlış alarm | Kesinlik | Duyarlılık |
+|---|---|---|---|---|
+| 5 | 5 | 2 | %71.4 | %50.0 |
+
+Acıbadem ana sayfası. Satırlar DevTools ile elle doğrulanan LLM bulgularından ve Büyükanne/Gece 3 gözlemlerinden
+geliyor. Yakalananlar ölçülebilir sorunlar (adsız düğme, kontrast, etiket, başlık yapısı). Kaçırılanlar bağlam
+gerektiren sorunlar (tıbbi dil, yakınlaştırmada yerleşim, kayan içerik, mobil ilk ekranda acil numara). Klavye +
+ekran okuyucu görevinin bulguları: TODO: gerçek ölçüm
 
 ### c) Halüsinasyon kontrolü
 
