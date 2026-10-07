@@ -717,8 +717,10 @@ uydurma öğeyi yakalar ama yanlış yorumu yakalayamaz; elle doğrulama bu yüz
 
 | Test | Aracın yakaladığı kritik sorun | Aracın kaçırdığı kritik sorun |
 |---|---|---|
-| Büyükanne Testi | TODO: gerçek ölçüm | TODO: gerçek ölçüm |
-| Gece 3 Acil Durum Testi | TODO: gerçek ölçüm | TODO: gerçek ölçüm |
+| Büyükanne Testi (Acıbadem, %200 yakınlaştırma; görev: randevu yolunu bulmak, 1-2 tıklama) | Düşük kontrastlı metin (`color-contrast`, 12 öğe); yalnızca simgeden oluşan adsız düğmeler (`button-name` 12 öğe, Kritik; LLM V4) | Tıbbi terimlerin açıklanmaması (rubrikte yok); %200'de yatay kaydırma (reflow ölçülmüyor); otomatik kayan içerik (statik analiz) |
+| Gece 3 Acil Durum Testi (Acıbadem, 390 px mobil görünüm, kısık parlaklık; acil servis numarası: ~40 sn, 3 tıklama) | Loş ışıkta zor okunan düşük kontrastlı metin (`color-contrast`) | Acil numaranın mobil ilk ekranda olmaması ve acil bilgi yolunun adının belirsiz olması (rubrikte yok; analiz masaüstü genişliğinde, LLM M2 "evet" dedi) |
+
+Ayrıntılı tablolar ve "kontrol edilmedi" olarak bırakılan maddeler şablonlarda.
 
 ---
 
