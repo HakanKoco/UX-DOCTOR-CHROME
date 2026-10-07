@@ -624,9 +624,9 @@ Her bulgu (`Finding`) şu alanları içerir:
 
 | Kategori | Site ve sayfa (herkese açık) | Rapor | Deterministik | LLM | Toplam |
 |---|---|---|---|---|---|
-| Sağlık | TODO: gerçek ölçüm | `reports/saglik-…json` | TODO: gerçek ölçüm | TODO: gerçek ölçüm | TODO: gerçek ölçüm |
-| Türk e-ticaret | TODO: gerçek ölçüm | `reports/eticaret-…json` | TODO: gerçek ölçüm | TODO: gerçek ölçüm | TODO: gerçek ölçüm |
-| Kamu hizmeti | TODO: gerçek ölçüm | `reports/kamu-…json` | TODO: gerçek ölçüm | TODO: gerçek ölçüm | TODO: gerçek ölçüm |
+| Sağlık | Acıbadem Sağlık Grubu, ana sayfa — https://www.acibadem.com.tr/ (2026-10-07) | `reports/saglik-acibadem.json` | 46.5 | 72 (gemini-3.5-flash-lite; 22/29 soru) | 56.7 |
+| Türk e-ticaret | Hepsiburada, ana sayfa — https://www.hepsiburada.com/ (2026-10-07) | `reports/eticaret-hepsiburada.json` | 48.9 | 28.6 (gemini-3.5-flash-lite; 8/29 soru; hassas sayfa, açık onayla gönderildi) | 40.8 |
+| Kamu hizmeti | Ankara Büyükşehir Belediyesi, ana sayfa — https://www.ankara.bel.tr/ (2026-10-07) | `reports/kamu-ankara-bel.json` | 57.7 | 62.3 (gemini-3.5-flash-lite; 21/29 soru) | 59.5 |
 
 ### a) Tutarlılık testi
 
@@ -637,15 +637,40 @@ Yöntem:
 
 | Alan | Değer |
 |---|---|
-| Sayfa | TODO: gerçek ölçüm |
-| Sağlayıcı / model / prompt sürümü / N | TODO: gerçek ölçüm |
-| temperature / thinkingLevel ya da effort (dışa aktarımdaki `parameters`) | TODO: gerçek ölçüm |
-| Yeniden deneme sayısı (429/503) | TODO: gerçek ölçüm |
-| İlke başına ortalama, std, min-max | TODO: gerçek ölçüm (betiğin ürettiği tabloyu buraya yapıştırın) |
-| En büyük sapma (max − min) | TODO: gerçek ölçüm |
-| Sapma 10 puanı aştı mı? | TODO: gerçek ölçüm |
-| Aştıysa neden (cevabı değişen sorular: dışa aktarımdaki `questionAgreement`) | TODO: gerçek ölçüm |
+| Sayfa | https://www.acibadem.com.tr/ (`reports/tutarlilik-acibadem.json`, 2026-10-07 11:32–11:33 UTC) |
+| Sağlayıcı / model / prompt sürümü / N | gemini / gemini-3.5-flash-lite (yanıtlayan model aynı) / norman-rubrik-v1 / 3 (3/3 tamamlandı) |
+| temperature / thinkingLevel ya da effort (dışa aktarımdaki `parameters`) | temperature 1, thinkingLevel MEDIUM, maxTokens 16000 |
+| Yeniden deneme sayısı (429/503) | 0 (her üç çalıştırmada) |
+| İlke başına ortalama, std, min-max | Aşağıdaki tablo |
+| En büyük sapma (max − min) | 33.3 puan (Eşleme); LLM toplamında 21.0 puan (52.4–73.4) |
+| Sapma 10 puanı aştı mı? | Evet |
+| Aştıysa neden (cevabı değişen sorular: dışa aktarımdaki `questionAgreement`) | 9 sorunun cevabı değişti: F2, F3, C2, C4, M2, M5, K4, A4, A5 (aşağıdaki liste). Yorum: TODO: gerçek ölçüm |
 | Çözüm ve çözüm sonrası ölçüm (Gemini'de gerekirse ayrı deney: `temperature: 0`) | TODO: gerçek ölçüm |
+
+`node scripts/tutarlilik-tablosu.mjs reports/tutarlilik-acibadem.json` çıktısı:
+
+| İlke | #1 | #2 | #3 | Ort. | Std | Min | Max | Aralık |
+|---|---|---|---|---|---|---|---|---|
+| Görünürlük | 72.7 | 72.7 | 72.7 | 72.7 | 0.0 | 72.7 | 72.7 | 0.0 |
+| Geri Bildirim | 50.0 | 30.0 | 30.0 | 36.7 | 11.5 | 30.0 | 50.0 | 20.0 |
+| Kısıtlar | — | — | 33.3 | 33.3 | — | 33.3 | 33.3 | 0.0 |
+| Eşleme | 44.4 | 12.5 | 11.1 | 22.7 | 18.8 | 11.1 | 44.4 | 33.3 |
+| Tutarlılık | 100.0 | 87.5 | 87.5 | 91.7 | 7.2 | 87.5 | 100.0 | 12.5 |
+| Sağlarlık | 100.0 | 100.0 | 80.0 | 93.3 | 11.5 | 80.0 | 100.0 | 20.0 |
+| **LLM toplam** | 73.4 | 60.5 | 52.4 | 62.1 | 10.6 | 52.4 | 73.4 | 21.0 |
+
+"—": o çalıştırmada ilke için yeterli soru cevaplanmadı (kapsam eşiği), skor hesaplanmadı.
+
+Çalıştırmalar arasında cevabı değişen sorular (#1 / #2 / #3):
+- F2: belirsiz / hayır / hayır (uyum %67)
+- F3: belirsiz / hayır / hayır (uyum %67)
+- C2: evet / hayır / hayır (uyum %67)
+- C4: belirsiz / belirsiz / hayır (uyum %67)
+- M2: evet / hayır / hayır (uyum %67)
+- M5: evet / belirsiz / hayır (uyum %33)
+- K4: evet / hayır / hayır (uyum %67)
+- A4: evet / evet / hayır (uyum %67)
+- A5: belirsiz / evet / evet (uyum %67)
 
 ### b) Manuel karşılaştırma
 
@@ -664,9 +689,24 @@ Kontrol iki aşamalıdır:
 
 | Ölçü | Değer |
 |---|---|
-| Toplam LLM atfı / envanterde olmayan atıf (otomatik) | TODO: gerçek ölçüm |
-| Elle doğrulanan bulgu sayısı | TODO: gerçek ölçüm |
-| Var olmayan / yanlış öğeye işaret eden bulgu oranı | TODO: gerçek ölçüm |
+| Toplam LLM atfı / envanterde olmayan atıf (otomatik) | 88 / 0 (%0.0); düşürülen bulgu 0 (3 site, gemini-3.5-flash-lite) |
+| Elle doğrulanan bulgu sayısı | 15 (Acıbadem 6, Hepsiburada 4, Ankara BB 5); 10 gerçek, 5 gerçek değil |
+| Var olmayan / yanlış öğeye işaret eden bulgu oranı | %33.3 (5/15) |
+
+Elle doğrulama, her bulgu için sayfada DevTools konsolunda salt okunur sorgularla yapıldı (h1/landmark sayısı,
+`aria-label`, `labels`, `type`, `role`, kapsayan bağlantı). Notlar `reports/halusinasyon-*.json` içindeki `not`
+alanında.
+
+| Site | Gerçek | Gerçek değil | Gerçek olmayanlar |
+|---|---|---|---|
+| Acıbadem | 4 | 2 | F2 (arama kutusunun zorunlu olması gerekmiyor; soru alana uymuyor), A5 ("Eğitim" başlığı bir bağlantının içinde, yani tıklanabilir) |
+| Hepsiburada | 4 | 0 | — |
+| Ankara BB | 2 | 3 | M4 ("h1 yok" denmiş, sayfada 10 h1 var; envantere hiç h1 girmemiş), K3 (menü bağlantısı metin içi bağlantı sanılmış), A1 (`div` ama `role="button"` ve `aria-label` var) |
+
+Otomatik kontrol hiçbir bulguyu yakalamadı, çünkü 5 hatalı bulgunun hepsi envanterde gerçekten var olan bir öğeye
+işaret ediyor. Hatalar öğenin yokluğundan değil; sorunun öğeye uymamasından (F2, K3), öğenin bağlamının
+görülmemesinden (A5, A1) ve envanterin sayfayı eksik temsil etmesinden (M4) kaynaklanıyor. Kimlik doğrulaması
+uydurma öğeyi yakalar ama yanlış yorumu yakalayamaz; elle doğrulama bu yüzden gerekli.
 
 ### d) Büyükanne Testi ve Gece 3 Acil Durum Testi
 
@@ -704,7 +744,9 @@ Kontrol iki aşamalıdır:
 - **iframe ve shadow DOM:** axe `iframes: false` ile çalışır. Shadow DOM içindeki öğeler envantere girmez. axe
   bulgularında listelenirler ama vurgulanamazlar.
 - **Envanter sınırı:** en çok 200 öğe; çok büyük sayfalarda kesilir (rapora yazılır). LLM yalnızca gördüğü öğeler
-  hakkında karar verir.
+  hakkında karar verir. Gerçek örnek (Ankara BB, 2026-10-07): envanter 221 adaydan 200'e kesildi ve envantere hiç
+  h1 girmedi (yalnızca h3'ler). DevTools sayfada 10 h1 gösterdi. LLM envantere göre "h1 yok" dedi; elle doğrulamada
+  bu bulgu "gerçek değil" işaretlendi.
 - **Kanıtsız "evet" ile kanıtsız "hayır" farklı işlenir:** Doğrulayıcı, kanıt kimliği olmayan "hayır"ı belirsize
   düşürür (bulgu sayılmaz, resmi skora girmez), ama kanıt kimliği olmayan "evet"i olduğu gibi sayar. "Evet" çoğu
   zaman sayfanın geneli hakkında bir yargıdır (ör. "menü tüm sayfalarda aynı yerde") ve tek bir öğeye bağlanamaz.
