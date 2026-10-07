@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest'
+import { GEMINI_TEMPERATURE, isGeminiTemperature } from './models'
 import { keyStatus, looksLikeApiKey, normalizeApiKey } from './settings'
+
+describe('isGeminiTemperature', () => {
+  it('yalnızca 1.0 (varsayılan) ve 0 (deney) kabul edilir', () => {
+    expect(GEMINI_TEMPERATURE).toBe(1)
+    expect(isGeminiTemperature(1)).toBe(true)
+    expect(isGeminiTemperature(0)).toBe(true)
+    expect(isGeminiTemperature(0.5)).toBe(false)
+    expect(isGeminiTemperature('0')).toBe(false)
+    expect(isGeminiTemperature(undefined)).toBe(false)
+  })
+})
 
 // Testlerde gerçek anahtar yoktur; değerler biçim denetimi için uydurulmuş yer tutuculardır.
 

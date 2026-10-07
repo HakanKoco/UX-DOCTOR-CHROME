@@ -11,6 +11,7 @@ import {
   isGeminiModelId,
   type ClaudeModelId,
   type GeminiModelId,
+  type GeminiTemperature,
   type ModelId,
   type Provider,
 } from './models'
@@ -160,16 +161,20 @@ export function geminiGenerateUrl(model: GeminiModelId): string {
 
 /**
  * Gemini istek gövdesi:
- * - temperature 1.0 (Google'ın Gemini 3 önerisi; bkz. models.ts GEMINI_TEMPERATURE),
+ * - temperature varsayılan 1.0 (Google'ın Gemini 3 önerisi; bkz. models.ts GEMINI_TEMPERATURE); tutarlılık
+ *   deneyi için ayarlardan 0 seçilebilir (GEMINI_TEMPERATURE_OPTIONS),
  * - thinkingLevel sabit MEDIUM (Claude'daki effort "medium" ile aynı düzey),
  * - Claude ile aynı sistem prompt'u, aynı kullanıcı mesajı ve aynı JSON şeması.
  */
-export function buildGeminiRequestBody(inventory: Inventory): GeminiRequestBody {
+export function buildGeminiRequestBody(
+  inventory: Inventory,
+  temperature: GeminiTemperature = GEMINI_TEMPERATURE,
+): GeminiRequestBody {
   return {
     systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
     contents: [{ role: 'user', parts: [{ text: JSON.stringify(buildUserPayload(inventory)) }] }],
     generationConfig: {
-      temperature: GEMINI_TEMPERATURE,
+      temperature,
       maxOutputTokens: MAX_TOKENS,
       thinkingConfig: { thinkingLevel: GEMINI_THINKING_LEVEL },
       responseFormat: { text: { mimeType: 'APPLICATION_JSON', schema: RESPONSE_SCHEMA } },
@@ -183,9 +188,16 @@ export type LlmRequest =
   | { provider: 'claude'; model: ClaudeModelId; body: ClaudeRequestBody }
   | { provider: 'gemini'; model: GeminiModelId; body: GeminiRequestBody }
 
-export function buildLlmRequest(model: ModelId, inventory: Inventory): LlmRequest {
+/** geminiTemperature yalnızca Gemini isteğinde kullanılır; Claude tarafının parametreleri modele göre sabittir. */
+export function buildLlmRequest(
+  model: ModelId,
+  inventory: Inventory,
+  options: { geminiTemperature?: GeminiTemperature } = {},
+): LlmRequest {
   if (isClaudeModelId(model)) return { provider: 'claude', model, body: buildClaudeRequestBody(model, inventory) }
-  if (isGeminiModelId(model)) return { provider: 'gemini', model, body: buildGeminiRequestBody(inventory) }
+  if (isGeminiModelId(model)) {
+    return { provider: 'gemini', model, body: buildGeminiRequestBody(inventory, options.geminiTemperature) }
+  }
   throw new Error(`Bilinmeyen model: ${String(model)}`)
 }
 

@@ -92,6 +92,19 @@ export const GEMINI_THINKING_LEVEL = 'MEDIUM' as const
  */
 export const GEMINI_TEMPERATURE = 1.0
 
+/**
+ * Tutarlılık deneyi için seçilebilen Gemini temperature değerleri. 1.0 varsayılandır (Google önerisi); 0 yalnızca
+ * öğrencinin kararıyla yapılan ayrı deney içindir (tutarlılık sapması 10 puanı aştı, Ödev 4.a). API aralığı
+ * [0.0, 2.0] — https://ai.google.dev/api/generate-content (GenerationConfig.temperature, 2026-10-07'de kontrol edildi).
+ * Seçilen değer istek gövdesine ve çalıştırma kaydının parameters.temperature alanına yazılır.
+ */
+export const GEMINI_TEMPERATURE_OPTIONS = [GEMINI_TEMPERATURE, 0] as const
+export type GeminiTemperature = (typeof GEMINI_TEMPERATURE_OPTIONS)[number]
+
+export function isGeminiTemperature(value: unknown): value is GeminiTemperature {
+  return typeof value === 'number' && (GEMINI_TEMPERATURE_OPTIONS as readonly number[]).includes(value)
+}
+
 export function getClaudeModelOption(id: string): ClaudeModelOption | undefined {
   return CLAUDE_MODEL_OPTIONS.find((m) => m.id === id)
 }

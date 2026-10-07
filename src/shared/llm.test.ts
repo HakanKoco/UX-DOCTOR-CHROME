@@ -153,6 +153,20 @@ describe('buildGeminiRequestBody / buildLlmRequest (Gemini)', () => {
     expect(body.generationConfig.responseFormat).toEqual({ text: { mimeType: 'APPLICATION_JSON', schema: RESPONSE_SCHEMA } })
   })
 
+  it('tutarlılık deneyi: ayarlardan seçilen temperature 0 gövdeye ve çalıştırma parametrelerine yazılır', () => {
+    const request = buildLlmRequest('gemini-3.5-flash-lite', sampleInventory(), { geminiTemperature: 0 })
+    expect(request.provider === 'gemini' && request.body.generationConfig.temperature).toBe(0)
+    expect(requestParameters(request)).toEqual({ maxTokens: MAX_TOKENS, temperature: 0, thinkingLevel: 'MEDIUM' })
+    // Seçenek verilmezse varsayılan 1.0 kalır.
+    expect(buildGeminiRequestBody(sampleInventory()).generationConfig.temperature).toBe(1)
+  })
+
+  it('Gemini temperature seçeneği Claude isteğini değiştirmez', () => {
+    const withOption = buildLlmRequest('claude-haiku-4-5', sampleInventory(), { geminiTemperature: 0 })
+    const without = buildLlmRequest('claude-haiku-4-5', sampleInventory())
+    expect(withOption.body).toEqual(without.body)
+  })
+
   it('Claude ile aynı sistem prompt ve kullanıcı mesajı gider', () => {
     const inv = sampleInventory()
     const gemini = buildGeminiRequestBody(inv)

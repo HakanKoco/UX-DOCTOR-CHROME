@@ -5,9 +5,11 @@ import { interpretVerifyResponse, sendToBackground } from '@/shared/messages'
 import {
   CLAUDE_MODEL_OPTIONS,
   GEMINI_MODEL_OPTIONS,
+  GEMINI_TEMPERATURE,
   PROVIDER_LABELS,
   isClaudeModelId,
   isGeminiModelId,
+  isGeminiTemperature,
   type Provider,
 } from '@/shared/models'
 import {
@@ -17,6 +19,7 @@ import {
   saveApiKey,
   saveClaudeModel,
   saveGeminiModel,
+  saveGeminiTemperature,
   saveProvider,
   keyStatus,
   type PublicSettings,
@@ -156,6 +159,13 @@ export default function App() {
     setStatus({ kind: 'ok', text: 'Model kaydedildi.' })
   }
 
+  async function onTemperatureChange(value: number) {
+    if (!isGeminiTemperature(value)) return
+    await saveGeminiTemperature(value)
+    await reload()
+    setStatus({ kind: 'ok', text: `Gemini temperature kaydedildi: ${value}.` })
+  }
+
   async function onVerify(provider: Provider) {
     setBusy(true)
     setStatus({ kind: 'info', text: 'Doğrulanıyor…' })
@@ -257,6 +267,34 @@ export default function App() {
           uyularak varsayılan 1.0'da tutulur (1.0 altı değerlerde döngü ve performans düşüşü uyarısı var). Analizde
           yalnızca yukarıda seçili sağlayıcının modeli kullanılır.
         </p>
+        <fieldset className="stack" disabled={!settings}>
+          <legend>Gemini temperature (tutarlılık deneyi)</legend>
+          <label>
+            <input
+              type="radio"
+              name="gemini-temperature"
+              checked={settings?.geminiTemperature === GEMINI_TEMPERATURE}
+              onChange={() => onTemperatureChange(GEMINI_TEMPERATURE)}
+            />{' '}
+            1.0 — varsayılan (Google önerisi)
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="gemini-temperature"
+              checked={settings?.geminiTemperature === 0}
+              onChange={() => onTemperatureChange(0)}
+            />{' '}
+            0 — yalnızca tutarlılık deneyi için
+          </label>
+        </fieldset>
+        {settings?.geminiTemperature === 0 && (
+          <p className="warning" role="note">
+            Deney modu: Gemini istekleri temperature 0 ile gönderiliyor. Google, Gemini 3 modellerinde 1.0 altı değerlerin
+            döngüye ya da performans düşüşüne yol açabileceğini belirtiyor. Değer her çalıştırma kaydına
+            (parameters.temperature) yazılır. Deney bitince 1.0'a geri alın.
+          </p>
+        )}
       </section>
 
       <section className="card" aria-labelledby="access-title">

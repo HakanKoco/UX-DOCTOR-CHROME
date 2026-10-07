@@ -206,7 +206,7 @@ export default function App() {
     try {
       const inventory = await callContent(tabId, 'buildInventory')
       setPending({
-        request: buildLlmRequest(settings.model, inventory),
+        request: buildLlmRequest(settings.model, inventory, { geminiTemperature: settings.geminiTemperature }),
         inventory,
         runs,
         mode: runs > 1 ? 'consistency' : 'single',
@@ -223,7 +223,9 @@ export default function App() {
     if (!fallbackOffer) return
     setError(null)
     setPending({
-      request: buildLlmRequest(FALLBACK_GEMINI_MODEL, fallbackOffer.inventory),
+      request: buildLlmRequest(FALLBACK_GEMINI_MODEL, fallbackOffer.inventory, {
+        geminiTemperature: settings?.geminiTemperature,
+      }),
       inventory: fallbackOffer.inventory,
       runs: 1,
       mode: 'fallback',

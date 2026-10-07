@@ -4,11 +4,14 @@ import {
   DEFAULT_CLAUDE_MODEL,
   DEFAULT_GEMINI_MODEL,
   DEFAULT_PROVIDER,
+  GEMINI_TEMPERATURE,
   isClaudeModelId,
   isGeminiModelId,
+  isGeminiTemperature,
   isProvider,
   type ClaudeModelId,
   type GeminiModelId,
+  type GeminiTemperature,
   type ModelId,
   type Provider,
 } from './models'
@@ -19,6 +22,7 @@ const KEY_CLAUDE_API = 'apiKey'
 const KEY_CLAUDE_MODEL = 'model'
 const KEY_GEMINI_API = 'geminiApiKey'
 const KEY_GEMINI_MODEL = 'geminiModel'
+const KEY_GEMINI_TEMPERATURE = 'geminiTemperature'
 
 const API_KEY_FIELDS: Record<Provider, string> = { claude: KEY_CLAUDE_API, gemini: KEY_GEMINI_API }
 
@@ -26,6 +30,8 @@ export interface PublicSettings {
   provider: Provider
   claudeModel: ClaudeModelId
   geminiModel: GeminiModelId
+  /** Gemini temperature: varsayılan 1.0; 0 yalnızca tutarlılık deneyi için (models.ts GEMINI_TEMPERATURE_OPTIONS). */
+  geminiTemperature: GeminiTemperature
   hasClaudeKey: boolean
   hasGeminiKey: boolean
   /** Seçili sağlayıcının modeli. */
@@ -39,16 +45,25 @@ function nonEmpty(value: unknown): boolean {
 }
 
 export async function getPublicSettings(): Promise<PublicSettings> {
-  const s = await chrome.storage.local.get([KEY_PROVIDER, KEY_CLAUDE_API, KEY_CLAUDE_MODEL, KEY_GEMINI_API, KEY_GEMINI_MODEL])
+  const s = await chrome.storage.local.get([
+    KEY_PROVIDER,
+    KEY_CLAUDE_API,
+    KEY_CLAUDE_MODEL,
+    KEY_GEMINI_API,
+    KEY_GEMINI_MODEL,
+    KEY_GEMINI_TEMPERATURE,
+  ])
   const provider = isProvider(s[KEY_PROVIDER]) ? s[KEY_PROVIDER] : DEFAULT_PROVIDER
   const claudeModel = isClaudeModelId(s[KEY_CLAUDE_MODEL]) ? s[KEY_CLAUDE_MODEL] : DEFAULT_CLAUDE_MODEL
   const geminiModel = isGeminiModelId(s[KEY_GEMINI_MODEL]) ? s[KEY_GEMINI_MODEL] : DEFAULT_GEMINI_MODEL
+  const geminiTemperature = isGeminiTemperature(s[KEY_GEMINI_TEMPERATURE]) ? s[KEY_GEMINI_TEMPERATURE] : GEMINI_TEMPERATURE
   const hasClaudeKey = nonEmpty(s[KEY_CLAUDE_API])
   const hasGeminiKey = nonEmpty(s[KEY_GEMINI_API])
   return {
     provider,
     claudeModel,
     geminiModel,
+    geminiTemperature,
     hasClaudeKey,
     hasGeminiKey,
     model: provider === 'claude' ? claudeModel : geminiModel,
@@ -91,6 +106,10 @@ export async function saveClaudeModel(model: ClaudeModelId): Promise<void> {
 
 export async function saveGeminiModel(model: GeminiModelId): Promise<void> {
   await chrome.storage.local.set({ [KEY_GEMINI_MODEL]: model })
+}
+
+export async function saveGeminiTemperature(temperature: GeminiTemperature): Promise<void> {
+  await chrome.storage.local.set({ [KEY_GEMINI_TEMPERATURE]: temperature })
 }
 
 /**
